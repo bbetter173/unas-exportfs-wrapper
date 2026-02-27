@@ -86,7 +86,6 @@ The `/persistent` partition is separate from the OS and survives firmware update
 
 This:
 - Restores original `exportfs` binary
-- Disables systemd service
 - Leaves files in `/persistent` (manual cleanup if desired)
 
 ## Configuration Reference
