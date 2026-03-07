@@ -1,0 +1,23 @@
+=== RUN   TestSmbApply_GeneratesFile
+Generated 1 share overrides to /var/folders/rs/7bxr_n0j03v7qk57p9q_mrk00000gn/T/TestSmbApply_GeneratesFile458593786/001/smb-overrides.conf
+--- PASS: TestSmbApply_GeneratesFile (0.00s)
+=== RUN   TestSmbApply_EmptyOverrides
+Generated 0 share overrides to /var/folders/rs/7bxr_n0j03v7qk57p9q_mrk00000gn/T/TestSmbApply_EmptyOverrides725308303/001/smb-overrides.conf
+--- PASS: TestSmbApply_EmptyOverrides (0.00s)
+=== RUN   TestSmbApply_MissingConfig
+unas-custom: smb apply: failed to load config: failed to read config file: open /var/folders/rs/7bxr_n0j03v7qk57p9q_mrk00000gn/T/TestSmbApply_MissingConfig3182446194/001/nonexistent.yaml: no such file or directory
+--- PASS: TestSmbApply_MissingConfig (0.00s)
+=== RUN   TestSmbApply_InvalidConfig
+unas-custom: smb apply: failed to load config: failed to parse config file: yaml: line 1: did not find expected ',' or ']'
+--- PASS: TestSmbApply_InvalidConfig (0.00s)
+=== RUN   TestSmbApply_CreatesDirectory
+Generated 0 share overrides to /var/folders/rs/7bxr_n0j03v7qk57p9q_mrk00000gn/T/TestSmbApply_CreatesDirectory3924735976/001/nested/subdir/smb-overrides.conf
+--- PASS: TestSmbApply_CreatesDirectory (0.00s)
+=== RUN   TestSmbApply_FileContent
+Generated 1 share overrides to /var/folders/rs/7bxr_n0j03v7qk57p9q_mrk00000gn/T/TestSmbApply_FileContent2123793504/001/smb-overrides.conf
+--- PASS: TestSmbApply_FileContent (0.00s)
+=== RUN   TestSmbApply_MultipleShares
+Generated 2 share overrides to /var/folders/rs/7bxr_n0j03v7qk57p9q_mrk00000gn/T/TestSmbApply_MultipleShares937185212/001/smb-overrides.conf
+--- PASS: TestSmbApply_MultipleShares (0.00s)
+PASS
+ok  	github.com/bbettridge/unas-custom/cmd/unas-custom	(cached)
