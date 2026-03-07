@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bbettridge/exportfs-wrapper/internal/config"
+	"github.com/bbettridge/unas-custom/internal/config"
 )
 
 // Export represents a parsed NFS export line

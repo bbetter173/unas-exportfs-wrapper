@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/bbettridge/exportfs-wrapper/internal/config"
-	"github.com/bbettridge/exportfs-wrapper/internal/nfs"
+	"github.com/bbettridge/unas-custom/internal/config"
+	"github.com/bbettridge/unas-custom/internal/nfs"
 )
 
 const (
@@ -84,7 +84,7 @@ func execOriginal(args []string) error {
 
 func init() {
 	log.SetFlags(0)
-	log.SetPrefix("exportfs-wrapper: ")
+	log.SetPrefix("unas-custom: ")
 
 	if _, err := os.Stat(originalExportfs); os.IsNotExist(err) {
 		syscall.Exec(originalExportfs, os.Args, os.Environ())

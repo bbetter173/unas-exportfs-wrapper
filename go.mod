@@ -1,4 +1,4 @@
-module github.com/bbettridge/exportfs-wrapper
+module github.com/bbettridge/unas-custom
 
 go 1.21.4
 
