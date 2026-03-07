@@ -13,6 +13,13 @@ nfs:
 # SMB share parameter overrides
 # Adds/overrides directives in existing Samba shares (share name must match exactly)
 smb:
+  # Append additional users to every share's "valid users" list.
+  # Reads the existing valid users from /etc/samba/share.conf and appends these.
+  # Only affects shares that already have a "valid users" directive.
+  append_valid_users:
+    - "extrauser"
+    - "@extragroup"
+
   overrides:
     - share: "Media"
       directives:

@@ -110,7 +110,7 @@ func runStatus(args []string) int {
 }
 
 func runSmbApply(args []string) int {
-	return runSmbApplyWithPaths(args, smbApplyDefaultConfigPath, smbApplyDefaultOverridesPath)
+	return runSmbApplyWithPaths(args, smbApplyDefaultConfigPath, smbApplyDefaultOverridesPath, smbApplyDefaultShareConfPath)
 }
 
 func runSmbInject(args []string) int {

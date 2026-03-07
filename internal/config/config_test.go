@@ -253,6 +253,79 @@ func TestFindSMBOverride_NoMatch(t *testing.T) {
 	}
 }
 
+// TestLoadWithAppendValidUsers tests loading config with append_valid_users
+func TestLoadWithAppendValidUsers(t *testing.T) {
+	yaml := `smb:
+  append_valid_users:
+    - "extrauser1"
+    - "extrauser2"
+  overrides:
+    - share: "Media"
+      directives:
+        guest ok: "yes"
+`
+	tmpFile := createTempConfig(t, yaml)
+	defer os.Remove(tmpFile)
+
+	cfg, err := Load(tmpFile)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if len(cfg.SMB.AppendValidUsers) != 2 {
+		t.Fatalf("expected 2 append_valid_users, got %d", len(cfg.SMB.AppendValidUsers))
+	}
+	if cfg.SMB.AppendValidUsers[0] != "extrauser1" {
+		t.Errorf("expected 'extrauser1', got '%s'", cfg.SMB.AppendValidUsers[0])
+	}
+	if cfg.SMB.AppendValidUsers[1] != "extrauser2" {
+		t.Errorf("expected 'extrauser2', got '%s'", cfg.SMB.AppendValidUsers[1])
+	}
+	if len(cfg.SMB.Overrides) != 1 {
+		t.Errorf("expected 1 SMB override, got %d", len(cfg.SMB.Overrides))
+	}
+}
+
+// TestLoadWithAppendValidUsersEmpty tests that empty append_valid_users is valid
+func TestLoadWithAppendValidUsersEmpty(t *testing.T) {
+	yaml := `smb:
+  append_valid_users: []
+  overrides: []
+`
+	tmpFile := createTempConfig(t, yaml)
+	defer os.Remove(tmpFile)
+
+	cfg, err := Load(tmpFile)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if len(cfg.SMB.AppendValidUsers) != 0 {
+		t.Errorf("expected 0 append_valid_users, got %d", len(cfg.SMB.AppendValidUsers))
+	}
+}
+
+// TestLoadWithAppendValidUsersOmitted tests that omitting append_valid_users is valid
+func TestLoadWithAppendValidUsersOmitted(t *testing.T) {
+	yaml := `smb:
+  overrides:
+    - share: "Media"
+      directives:
+        guest ok: "yes"
+`
+	tmpFile := createTempConfig(t, yaml)
+	defer os.Remove(tmpFile)
+
+	cfg, err := Load(tmpFile)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if cfg.SMB.AppendValidUsers != nil {
+		t.Errorf("expected nil append_valid_users when omitted, got %v", cfg.SMB.AppendValidUsers)
+	}
+}
+
 // TestConfigValidation_EmptyShareName tests that Load returns error for empty share name
 func TestConfigValidation_EmptyShareName(t *testing.T) {
 	yaml := `smb:

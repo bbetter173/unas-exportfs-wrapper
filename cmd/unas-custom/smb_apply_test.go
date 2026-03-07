@@ -11,6 +11,7 @@ func TestSmbApply_GeneratesFile(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
 
 	cfg := `smb:
   overrides:
@@ -21,7 +22,7 @@ func TestSmbApply_GeneratesFile(t *testing.T) {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	result := runSmbApplyWithPaths(nil, cfgPath, outPath)
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
 	if result != 0 {
 		t.Fatalf("expected exit 0, got %d", result)
 	}
@@ -43,6 +44,7 @@ func TestSmbApply_EmptyOverrides(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
 
 	cfg := `smb:
   overrides: []`
@@ -50,7 +52,7 @@ func TestSmbApply_EmptyOverrides(t *testing.T) {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	result := runSmbApplyWithPaths(nil, cfgPath, outPath)
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
 	if result != 0 {
 		t.Fatalf("expected exit 0 for empty overrides, got %d", result)
 	}
@@ -67,8 +69,9 @@ func TestSmbApply_EmptyOverrides(t *testing.T) {
 func TestSmbApply_MissingConfig(t *testing.T) {
 	dir := t.TempDir()
 	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
 
-	result := runSmbApplyWithPaths(nil, filepath.Join(dir, "nonexistent.yaml"), outPath)
+	result := runSmbApplyWithPaths(nil, filepath.Join(dir, "nonexistent.yaml"), outPath, shareConfPath)
 	if result != 1 {
 		t.Fatalf("expected exit 1 for missing config, got %d", result)
 	}
@@ -78,12 +81,13 @@ func TestSmbApply_InvalidConfig(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
 
 	if err := os.WriteFile(cfgPath, []byte("{unclosed: [bracket"), 0644); err != nil {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	result := runSmbApplyWithPaths(nil, cfgPath, outPath)
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
 	if result != 1 {
 		t.Fatalf("expected exit 1 for invalid config, got %d", result)
 	}
@@ -92,15 +96,16 @@ func TestSmbApply_InvalidConfig(t *testing.T) {
 func TestSmbApply_CreatesDirectory(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
-	// Nested path that doesn't exist yet
 	outPath := filepath.Join(dir, "nested", "subdir", "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
+
 	cfg := `smb:
   overrides: []`
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	result := runSmbApplyWithPaths(nil, cfgPath, outPath)
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
 	if result != 0 {
 		t.Fatalf("expected exit 0 when creating nested directories, got %d", result)
 	}
@@ -114,6 +119,7 @@ func TestSmbApply_FileContent(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
 
 	cfg := `smb:
   overrides:
@@ -125,7 +131,7 @@ func TestSmbApply_FileContent(t *testing.T) {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	result := runSmbApplyWithPaths(nil, cfgPath, outPath)
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
 	if result != 0 {
 		t.Fatalf("expected exit 0, got %d", result)
 	}
@@ -154,6 +160,7 @@ func TestSmbApply_MultipleShares(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
 
 	cfg := `smb:
   overrides:
@@ -168,7 +175,7 @@ func TestSmbApply_MultipleShares(t *testing.T) {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	result := runSmbApplyWithPaths(nil, cfgPath, outPath)
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
 	if result != 0 {
 		t.Fatalf("expected exit 0, got %d", result)
 	}
@@ -184,5 +191,148 @@ func TestSmbApply_MultipleShares(t *testing.T) {
 	}
 	if !strings.Contains(s, "[Backup]") {
 		t.Errorf("expected [Backup] section in output, got:\n%s", s)
+	}
+}
+
+func TestSmbApply_AppendValidUsers(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
+
+	cfg := `smb:
+  append_valid_users:
+    - "extrauser1"
+    - "extrauser2"
+  overrides:
+    - share: "Media"
+      directives:
+        guest ok: "yes"`
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
+	shareConf := `[Media]
+   path = /var/nfs/shared/Media
+   valid users = @wheel root
+   read only = yes
+`
+	if err := os.WriteFile(shareConfPath, []byte(shareConf), 0644); err != nil {
+		t.Fatalf("failed to write share.conf: %v", err)
+	}
+
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
+	if result != 0 {
+		t.Fatalf("expected exit 0, got %d", result)
+	}
+
+	content, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+	s := string(content)
+
+	if !strings.Contains(s, "[Media]") {
+		t.Errorf("expected [Media] section in output, got:\n%s", s)
+	}
+	if !strings.Contains(s, "valid users = @wheel root extrauser1 extrauser2") {
+		t.Errorf("expected merged valid users in output, got:\n%s", s)
+	}
+	if !strings.Contains(s, "guest ok = yes") {
+		t.Errorf("expected existing directive preserved, got:\n%s", s)
+	}
+}
+
+func TestSmbApply_AppendValidUsersMultipleShares(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "share.conf")
+
+	cfg := `smb:
+  append_valid_users:
+    - "serviceaccount"
+  overrides:
+    - share: "Media"
+      directives:
+        guest ok: "yes"`
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
+	shareConf := `[Media]
+   path = /var/nfs/shared/Media
+   valid users = @media admin
+   read only = yes
+
+[Backups]
+   path = /var/nfs/shared/Backups
+   valid users = @wheel
+   read only = no
+`
+	if err := os.WriteFile(shareConfPath, []byte(shareConf), 0644); err != nil {
+		t.Fatalf("failed to write share.conf: %v", err)
+	}
+
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
+	if result != 0 {
+		t.Fatalf("expected exit 0, got %d", result)
+	}
+
+	content, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+	s := string(content)
+
+	if !strings.Contains(s, "valid users = @media admin serviceaccount") {
+		t.Errorf("expected merged Media valid users, got:\n%s", s)
+	}
+	if !strings.Contains(s, "[Backups]") {
+		t.Errorf("expected Backups section created, got:\n%s", s)
+	}
+	if !strings.Contains(s, "valid users = @wheel serviceaccount") {
+		t.Errorf("expected merged Backups valid users, got:\n%s", s)
+	}
+}
+
+func TestSmbApply_AppendValidUsersMissingShareConf(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "nonexistent-share.conf")
+
+	cfg := `smb:
+  append_valid_users:
+    - "extrauser"
+  overrides: []`
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
+	if result != 1 {
+		t.Fatalf("expected exit 1 when share.conf missing with append_valid_users, got %d", result)
+	}
+}
+
+func TestSmbApply_NoAppendValidUsersIgnoresShareConf(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	outPath := filepath.Join(dir, "smb-overrides.conf")
+	shareConfPath := filepath.Join(dir, "nonexistent-share.conf")
+
+	cfg := `smb:
+  overrides:
+    - share: "Media"
+      directives:
+        guest ok: "yes"`
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
+	result := runSmbApplyWithPaths(nil, cfgPath, outPath, shareConfPath)
+	if result != 0 {
+		t.Fatalf("expected exit 0 when no append_valid_users (share.conf not needed), got %d", result)
 	}
 }

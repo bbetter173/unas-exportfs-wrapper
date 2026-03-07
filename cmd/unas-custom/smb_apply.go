@@ -12,16 +12,33 @@ import (
 const (
 	smbApplyDefaultConfigPath    = "/persistent/unas-custom/config.yaml"
 	smbApplyDefaultOverridesPath = "/persistent/unas-custom/smb-overrides.conf"
+	smbApplyDefaultShareConfPath = "/etc/samba/share.conf"
 )
 
-func runSmbApplyWithPaths(args []string, configPath, overridesPath string) int {
+func runSmbApplyWithPaths(args []string, configPath, overridesPath, shareConfPath string) int {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unas-custom: smb apply: failed to load config: %v\n", err)
 		return 1
 	}
 
-	content, err := smb.GenerateOverrides(cfg.SMB.Overrides)
+	overrides := cfg.SMB.Overrides
+
+	if len(cfg.SMB.AppendValidUsers) > 0 {
+		shareData, err := os.ReadFile(shareConfPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unas-custom: smb apply: failed to read share config for valid users: %v\n", err)
+			return 1
+		}
+		existingValidUsers, err := smb.ParseShareValidUsers(shareData)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unas-custom: smb apply: failed to parse share config: %v\n", err)
+			return 1
+		}
+		overrides = smb.MergeAppendValidUsers(overrides, cfg.SMB.AppendValidUsers, existingValidUsers)
+	}
+
+	content, err := smb.GenerateOverrides(overrides)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unas-custom: smb apply: failed to generate overrides: %v\n", err)
 		return 1
@@ -37,6 +54,6 @@ func runSmbApplyWithPaths(args []string, configPath, overridesPath string) int {
 		return 1
 	}
 
-	fmt.Printf("Generated %d share overrides to %s\n", len(cfg.SMB.Overrides), overridesPath)
+	fmt.Printf("Generated %d share overrides to %s\n", len(overrides), overridesPath)
 	return 0
 }

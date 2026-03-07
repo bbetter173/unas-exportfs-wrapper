@@ -22,7 +22,8 @@ type SMBOverride struct {
 }
 
 type SMBConfig struct {
-	Overrides []SMBOverride `yaml:"overrides"`
+	AppendValidUsers []string      `yaml:"append_valid_users"`
+	Overrides        []SMBOverride `yaml:"overrides"`
 }
 
 type Config struct {
