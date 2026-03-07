@@ -106,7 +106,7 @@ func runInstall(args []string) int { return runInstallImpl(args) }
 func runUninstall(args []string) int { return runUninstallImpl(args) }
 
 func runStatus(args []string) int {
-	return 0
+	return runStatusImpl(args)
 }
 
 func runSmbApply(args []string) int {
