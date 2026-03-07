@@ -8,7 +8,7 @@ UniFi NAS Pro runs a daemon called UDC that manages NFS exports and Samba shares
 
 `unas-custom` solves this by intercepting the tools UDC calls to apply its changes. Your overrides get injected at the right moment, every time, without fighting the UniFi management layer.
 
-Configuration and the binary live in `/persistent/unas-custom/`, a partition that survives firmware updates. After a firmware update you re-run `install.sh` to restore the hooks.
+Configuration and the binary live in `/persistent/unas-custom/`, a partition that survives firmware updates. After a firmware update you re-run `unas-custom install` to restore the hooks.
 
 ## How It Works
 
@@ -52,6 +52,17 @@ After smbd starts or reloads, the include line gets injected before smbd reads i
 
 ## Installation
 
+### Quick Install (recommended)
+
+```bash
+ssh root@<unas-ip>
+curl -fsSL https://raw.githubusercontent.com/bbetter173/unas-exportfs-wrapper/main/scripts/get.sh | bash
+```
+
+This downloads the latest release, extracts it to `/persistent/unas-custom/`, and installs the hooks. Existing `config.yaml` is preserved on upgrades.
+
+### Manual Install
+
 ```bash
 # 1. Build
 make build-arm64
@@ -63,8 +74,8 @@ scp -r build/deploy/* root@<unas-ip>:/persistent/unas-custom/
 # 3. Install on UNAS
 ssh root@<unas-ip>
 cd /persistent/unas-custom
-chmod +x *.sh unas-custom
-./install.sh
+chmod +x unas-custom
+./unas-custom install
 
 # 4. Configure
 vi /persistent/unas-custom/config.yaml
@@ -79,8 +90,7 @@ Firmware updates wipe `/usr/sbin`, `/usr/bin`, and `/etc/systemd/system/`. Re-ru
 
 ```bash
 ssh root@<unas-ip>
-cd /persistent/unas-custom
-./install.sh
+/persistent/unas-custom/unas-custom install
 ```
 
 Your config and the binary in `/persistent/unas-custom/` are untouched.
@@ -132,8 +142,6 @@ unas-custom smb apply    Generate smb-overrides.conf from config
 unas-custom smb inject   Idempotently inject include line into smb.conf
 ```
 
-`install` and `uninstall` are also available as shell scripts (`install.sh`, `uninstall.sh`) for use before the binary is on PATH.
-
 ## Storage Locations
 
 ```
@@ -143,9 +151,7 @@ unas-custom smb inject   Idempotently inject include line into smb.conf
 ├── smbcontrol -> unas-custom     # SMB wrapper symlink
 ├── config.yaml                   # Your configuration
 ├── smb-overrides.conf            # Generated SMB overrides (Samba INI)
-├── unas-custom.log               # Wrapper activity log
-├── install.sh                    # Run after firmware updates
-└── uninstall.sh                  # Remove all hooks
+└── unas-custom.log               # Wrapper activity log
 
 /usr/sbin/                        # Wiped by firmware updates
 ├── exportfs -> /persistent/unas-custom/exportfs
@@ -166,7 +172,7 @@ unas-custom smb inject   Idempotently inject include line into smb.conf
 Re-run install:
 
 ```bash
-cd /persistent/unas-custom && ./install.sh
+/persistent/unas-custom/unas-custom install
 ```
 
 Check status:

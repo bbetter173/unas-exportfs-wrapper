@@ -38,10 +38,8 @@ deploy: build-arm64
 	@echo "Creating deployment package..."
 	mkdir -p $(BUILD_DIR)/deploy
 	cp $(BUILD_DIR)/$(BINARY_NAME)-arm64 $(BUILD_DIR)/deploy/$(BINARY_NAME)
-	cp scripts/* $(BUILD_DIR)/deploy/
 	cp config.example.yaml $(BUILD_DIR)/deploy/
 	chmod +x $(BUILD_DIR)/deploy/$(BINARY_NAME)
-	chmod +x $(BUILD_DIR)/deploy/*.sh
 	@echo ""
 	@echo "Deployment package ready in $(BUILD_DIR)/deploy/"
 	@echo "Copy to UNAS: scp -r $(BUILD_DIR)/deploy/* root@unas:/persistent/unas-custom/"
