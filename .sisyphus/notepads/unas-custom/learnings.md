@@ -106,3 +106,29 @@
 ### Exec behavior
 - Use `exec.Command` with stdio passthrough and propagate `ExitError.ExitCode()`.
 - Test arg passthrough by writing `"$@"` from mock shell scripts to a temp file.
+
+## T10 — Installer package (2026-03-07)
+
+- `Installer` struct with all paths as fields + mockable `DaemonReloadFn`/`Stdout` — identical testability pattern to T8/T8.5
+- `copyFile` helper: `os.Open`/`os.Create` + `io.Copy` + explicit `out.Close()` (no defer, to capture error) + `os.Chmod(0755)`
+- `installWrapper` idempotency: check `os.Stat(origPath)` → `os.IsNotExist` before backing up; always copy binaryPath to targetPath
+- `uninstallWrapper`: if no `.orig` → print notice + return nil (no error); otherwise copy back and remove `.orig`
+- `os.Remove` on drop-in: ignore `os.IsNotExist` error for idempotency
+- Test helper returns `(*Installer, string)` — tests needing DaemonReloadFn tracking override the field directly
+- `smb.Inject`/`smb.Remove` handle idempotency themselves; installer just calls them
+- LSP shows errors for cross-file same-package symbols until indexed — `go build` is ground truth
+
+## T14 — README rewrite and unified config example (2026-03-07)
+
+- Config struct uses `yaml:"nfs"` and `yaml:"smb"` top-level keys — old flat `rules:` format is incompatible
+- Verified config.example.yaml loads via inline Go program using same struct/validation logic as `config.Load()`
+- README structure that works: Overview → How It Works (NFS then SMB with architecture detail) → Installation → Post-Firmware → Config Reference → Subcommands → Storage Locations → Troubleshooting → Migration → Development
+- SMB interception needs two points explained clearly: smbcontrol wrapper (covers UDC share ops) + systemd drop-in (covers smbd restarts/reloads)
+- `go run - <<'EOF'` heredoc syntax doesn't work for inline Go programs — write to a temp file and `go run <file>` instead
+- Migration section: old `rules:` → `nfs:\n  rules:`, old dir `/persistent/nfs-intercept/` → `/persistent/unas-custom/`
+
+## [2026-03-07] F1 Plan Compliance Audit
+
+- Must Have checks executed: all 15 checklist items pass, including `make build-arm64` producing a static 2.2MB ARM64 ELF and `go list -m all | wc -l` == 3.
+- Guardrails checked (G1/G2/G4/G8/G14/G19): no violations found via grep/go list commands.
+- DoD gap: package coverage for `cmd/unas-custom` and `internal/installer` is below the plan's >80% threshold.

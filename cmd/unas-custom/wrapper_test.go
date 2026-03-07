@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -130,9 +131,26 @@ func TestRunNfsWrapper_MissingOriginal(t *testing.T) {
 		t.Fatalf("failed to create exports dir: %v", err)
 	}
 
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	oldStderr := os.Stderr
+	os.Stderr = w
+
 	exitCode := runNfsWrapperWithPaths([]string{"-ra"}, configPath, exportsDir, filepath.Join(dir, "missing-exportfs.orig"))
+
+	w.Close()
+	os.Stderr = oldStderr
+	var stderrBuf bytes.Buffer
+	stderrBuf.ReadFrom(r)
+	stderrOutput := stderrBuf.String()
+
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit code when original binary is missing")
+	}
+	if !strings.Contains(stderrOutput, "not found") {
+		t.Errorf("expected 'not found' error in stderr, got: %q", stderrOutput)
 	}
 }
 
@@ -224,9 +242,26 @@ func TestRunSmbcontrolWrapper_MissingOriginal(t *testing.T) {
 		t.Fatalf("failed to write smb.conf: %v", err)
 	}
 
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	oldStderr := os.Stderr
+	os.Stderr = w
+
 	exitCode := runSmbcontrolWrapperWithPaths([]string{"all", "reload-config"}, smbConfPath, "include = /tmp/test-overrides.conf", filepath.Join(dir, "missing-smbcontrol.orig"))
+
+	w.Close()
+	os.Stderr = oldStderr
+	var stderrBuf bytes.Buffer
+	stderrBuf.ReadFrom(r)
+	stderrOutput := stderrBuf.String()
+
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit code when original binary is missing")
+	}
+	if !strings.Contains(stderrOutput, "not found") {
+		t.Errorf("expected 'not found' error in stderr, got: %q", stderrOutput)
 	}
 }
 

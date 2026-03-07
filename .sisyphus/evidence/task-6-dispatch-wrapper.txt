@@ -1,0 +1,26 @@
+=== RUN   TestDetectMode_Exportfs
+--- PASS: TestDetectMode_Exportfs (0.00s)
+=== RUN   TestDetectMode_Smbcontrol
+--- PASS: TestDetectMode_Smbcontrol (0.00s)
+=== RUN   TestDetectMode_UnasCustom
+--- PASS: TestDetectMode_UnasCustom (0.00s)
+=== RUN   TestDetectMode_Unknown
+--- PASS: TestDetectMode_Unknown (0.00s)
+=== RUN   TestParseSubcommand_Install
+--- PASS: TestParseSubcommand_Install (0.00s)
+=== RUN   TestParseSubcommand_Uninstall
+--- PASS: TestParseSubcommand_Uninstall (0.00s)
+=== RUN   TestParseSubcommand_Status
+--- PASS: TestParseSubcommand_Status (0.00s)
+=== RUN   TestParseSubcommand_SmbApply
+--- PASS: TestParseSubcommand_SmbApply (0.00s)
+=== RUN   TestParseSubcommand_SmbInject
+--- PASS: TestParseSubcommand_SmbInject (0.00s)
+=== RUN   TestParseSubcommand_Help
+--- PASS: TestParseSubcommand_Help (0.00s)
+=== RUN   TestParseSubcommand_HelpFlag
+--- PASS: TestParseSubcommand_HelpFlag (0.00s)
+=== RUN   TestParseSubcommand_Unknown
+--- PASS: TestParseSubcommand_Unknown (0.00s)
+PASS
+ok  	github.com/bbettridge/unas-custom/cmd/unas-custom	(cached)

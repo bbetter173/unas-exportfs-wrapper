@@ -109,8 +109,10 @@ func rewriteExportsFiles(exportsDir string, cfg *config.Config) error {
 func runOriginalCommand(originalPath string, args []string) int {
 	if _, err := os.Stat(originalPath); err != nil {
 		if os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "unas-custom: %s not found — reinstall with unas-custom install\n", originalPath)
 			return 1
 		}
+		fmt.Fprintf(os.Stderr, "unas-custom: cannot access %s: %v\n", originalPath, err)
 		return 1
 	}
 

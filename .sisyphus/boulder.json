@@ -1,0 +1,10 @@
+{
+  "active_plan": "/Users/bbettridge/Development/ebpf-file-intercept/exportfs-wrapper/.sisyphus/plans/unas-custom.md",
+  "started_at": "2026-03-07T08:37:14.560Z",
+  "session_ids": [
+    "ses_338c12731ffelDTDlsPB3NHOkK"
+  ],
+  "plan_name": "unas-custom",
+  "worktree_path": "/Users/bbettridge/Development/ebpf-file-intercept/exportfs-wrapper",
+  "agent": "atlas"
+}

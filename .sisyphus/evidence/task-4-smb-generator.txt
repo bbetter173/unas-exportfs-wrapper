@@ -1,0 +1,18 @@
+=== RUN   TestGenerateOverrides_SingleShare
+--- PASS: TestGenerateOverrides_SingleShare (0.00s)
+=== RUN   TestGenerateOverrides_MultipleShares
+--- PASS: TestGenerateOverrides_MultipleShares (0.00s)
+=== RUN   TestGenerateOverrides_MultipleDirectives
+--- PASS: TestGenerateOverrides_MultipleDirectives (0.00s)
+=== RUN   TestGenerateOverrides_EmptyOverrides
+--- PASS: TestGenerateOverrides_EmptyOverrides (0.00s)
+=== RUN   TestGenerateOverrides_SpecialCharacters
+--- PASS: TestGenerateOverrides_SpecialCharacters (0.00s)
+=== RUN   TestGenerateOverrides_ValidSyntax
+--- PASS: TestGenerateOverrides_ValidSyntax (0.00s)
+=== RUN   TestValidateDirectives_EmptyShareName
+--- PASS: TestValidateDirectives_EmptyShareName (0.00s)
+=== RUN   TestValidateDirectives_EmptyDirectiveKey
+--- PASS: TestValidateDirectives_EmptyDirectiveKey (0.00s)
+PASS
+ok  	github.com/bbettridge/unas-custom/internal/smb	1.389s

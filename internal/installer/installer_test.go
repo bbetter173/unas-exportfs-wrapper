@@ -2,6 +2,7 @@ package installer
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -331,5 +332,233 @@ func TestUninstall_Idempotent(t *testing.T) {
 	}
 	if err := inst.Uninstall(); err != nil {
 		t.Fatalf("Second Uninstall() error = %v (should be idempotent)", err)
+	}
+}
+
+func TestNewInstaller_ReturnsDefaults(t *testing.T) {
+	inst := NewInstaller()
+	if inst == nil {
+		t.Fatal("NewInstaller() returned nil")
+	}
+	if inst.ExportfsPath != "/usr/sbin/exportfs" {
+		t.Errorf("ExportfsPath = %q, want %q", inst.ExportfsPath, "/usr/sbin/exportfs")
+	}
+	if inst.SmbcontrolPath != "/usr/bin/smbcontrol" {
+		t.Errorf("SmbcontrolPath = %q, want %q", inst.SmbcontrolPath, "/usr/bin/smbcontrol")
+	}
+	if inst.DropInPath != "/etc/systemd/system/smbd.service.d/unas-custom.conf" {
+		t.Errorf("DropInPath = %q", inst.DropInPath)
+	}
+	if inst.DaemonReloadFn == nil {
+		t.Error("DaemonReloadFn is nil")
+	}
+	if inst.Stdout == nil {
+		t.Error("Stdout is nil")
+	}
+}
+
+func TestCopyFile_MissingSource(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "nonexistent")
+	dst := filepath.Join(dir, "dst")
+	err := copyFile(src, dst)
+	if err == nil {
+		t.Error("expected error for missing source, got nil")
+	}
+	if !strings.Contains(err.Error(), "opening") {
+		t.Errorf("expected 'opening' in error message, got: %v", err)
+	}
+}
+
+func TestInstall_DaemonReloadError(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	inst.DaemonReloadFn = func() error { return errors.New("daemon reload failed") }
+	err := inst.Install(inst.BinaryPath)
+	if err == nil {
+		t.Error("expected error when daemon reload fails")
+	}
+	if !strings.Contains(err.Error(), "daemon-reload") {
+		t.Errorf("expected 'daemon-reload' in error, got: %v", err)
+	}
+}
+
+func TestUninstall_DaemonReloadError(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	inst.DaemonReloadFn = func() error { return errors.New("daemon reload failed") }
+	err := inst.Uninstall()
+	if err == nil {
+		t.Error("expected error when daemon reload fails during uninstall")
+	}
+	if !strings.Contains(err.Error(), "daemon-reload") {
+		t.Errorf("expected 'daemon-reload' in error, got: %v", err)
+	}
+}
+
+func TestInstallWrapper_BackupFails(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	dir := t.TempDir()
+	err := inst.installWrapper(
+		filepath.Join(dir, "binary"),
+		filepath.Join(dir, "nonexistent-target"),
+		filepath.Join(dir, "nonexistent-orig"),
+	)
+	if err == nil {
+		t.Error("expected error when target path doesn't exist for backup")
+	}
+	if !strings.Contains(err.Error(), "backing up") {
+		t.Errorf("expected 'backing up' in error, got: %v", err)
+	}
+}
+
+func TestInstallWrapper_InstallFails(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	dir := t.TempDir()
+	origPath := filepath.Join(dir, "existing-orig")
+	if err := os.WriteFile(origPath, []byte("orig"), 0755); err != nil {
+		t.Fatalf("failed to create orig file: %v", err)
+	}
+	err := inst.installWrapper(
+		filepath.Join(dir, "nonexistent-binary"),
+		filepath.Join(dir, "target"),
+		origPath,
+	)
+	if err == nil {
+		t.Error("expected error when binary doesn't exist")
+	}
+	if !strings.Contains(err.Error(), "installing wrapper") {
+		t.Errorf("expected 'installing wrapper' in error, got: %v", err)
+	}
+}
+
+func TestNewInstaller_DaemonReloadFnCallable(t *testing.T) {
+	inst := NewInstaller()
+	_ = inst.DaemonReloadFn()
+}
+
+func TestCopyFile_MissingDestDir(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src")
+	if err := os.WriteFile(src, []byte("content"), 0644); err != nil {
+		t.Fatalf("failed to create src: %v", err)
+	}
+	dst := filepath.Join(dir, "nonexistent-dir", "dst")
+	err := copyFile(src, dst)
+	if err == nil {
+		t.Error("expected error for missing dst dir, got nil")
+	}
+	if !strings.Contains(err.Error(), "creating") {
+		t.Errorf("expected 'creating' in error message, got: %v", err)
+	}
+}
+
+func TestInstall_BinaryMissing(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	inst.BinaryPath = "/nonexistent/binary"
+	err := inst.Install("/nonexistent/binary")
+	if err == nil {
+		t.Error("expected error when binary source is missing")
+	}
+}
+
+func TestUninstall_AllMissing(t *testing.T) {
+	dir := t.TempDir()
+	inst := &Installer{
+		ExportfsPath:       filepath.Join(dir, "exportfs"),
+		ExportfsOrigPath:   filepath.Join(dir, "exportfs.orig"),
+		SmbcontrolPath:     filepath.Join(dir, "smbcontrol"),
+		SmbcontrolOrigPath: filepath.Join(dir, "smbcontrol.orig"),
+		SmbConfPath:        filepath.Join(dir, "smb.conf"),
+		IncludeLine:        "include = /persistent/unas-custom/smb-overrides.conf",
+		DropInPath:         filepath.Join(dir, "unas-custom.conf"),
+		DaemonReloadFn:     func() error { return nil },
+		Stdout:             io.Discard,
+	}
+	err := inst.Uninstall()
+	if err != nil {
+		t.Errorf("Uninstall() on fresh state should return nil, got %v", err)
+	}
+}
+
+func TestInstall_DropInContent_ExactMatch(t *testing.T) {
+	inst, dir := newTestInstaller(t)
+	os.WriteFile(filepath.Join(dir, "unas-custom"), []byte("fake binary"), 0755)
+
+	if err := inst.Install(filepath.Join(dir, "unas-custom")); err != nil {
+		t.Fatalf("Install() error: %v", err)
+	}
+
+	content, err := os.ReadFile(inst.DropInPath)
+	if err != nil {
+		t.Fatalf("could not read drop-in: %v", err)
+	}
+
+	s := string(content)
+	required := []string{
+		"ExecStartPost=/persistent/unas-custom/unas-custom smb inject",
+		"ExecReload=",
+		"ExecReload=/persistent/unas-custom/unas-custom smb inject",
+		"ExecReload=/bin/kill -HUP $MAINPID",
+	}
+	for _, line := range required {
+		if !strings.Contains(s, line) {
+			t.Errorf("drop-in missing required line: %q", line)
+		}
+	}
+}
+
+func TestInstall_ConfigDirCreationFails(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	inst.ConfigDir = "/root/nonexistent/config"
+	err := inst.Install(inst.BinaryPath)
+	if err == nil {
+		t.Error("expected error when config dir creation fails")
+	}
+	if !strings.Contains(err.Error(), "creating config dir") {
+		t.Errorf("expected 'creating config dir' in error, got: %v", err)
+	}
+}
+
+func TestInstall_DropInDirCreationFails(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	inst.DropInDir = "/root/nonexistent/drop-in"
+	err := inst.Install(inst.BinaryPath)
+	if err == nil {
+		t.Error("expected error when drop-in dir creation fails")
+	}
+	if !strings.Contains(err.Error(), "creating systemd drop-in dir") {
+		t.Errorf("expected 'creating systemd drop-in dir' in error, got: %v", err)
+	}
+}
+
+func TestInstall_DropInWriteFails(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	inst.DropInPath = "/root/nonexistent/drop-in.conf"
+	err := inst.Install(inst.BinaryPath)
+	if err == nil {
+		t.Error("expected error when drop-in write fails")
+	}
+	if !strings.Contains(err.Error(), "writing systemd drop-in") {
+		t.Errorf("expected 'writing systemd drop-in' in error, got: %v", err)
+	}
+}
+
+func TestCopyFile_PermissionDenied(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src")
+	if err := os.WriteFile(src, []byte("content"), 0644); err != nil {
+		t.Fatalf("failed to create src: %v", err)
+	}
+	dst := filepath.Join(dir, "dst")
+	if err := os.WriteFile(dst, []byte("existing"), 0644); err != nil {
+		t.Fatalf("failed to create dst: %v", err)
+	}
+	if err := os.Chmod(dir, 0555); err != nil {
+		t.Fatalf("failed to chmod dir: %v", err)
+	}
+	defer os.Chmod(dir, 0755)
+
+	err := copyFile(src, filepath.Join(dir, "new-dst"))
+	if err == nil {
+		t.Error("expected error when write permission denied")
 	}
 }

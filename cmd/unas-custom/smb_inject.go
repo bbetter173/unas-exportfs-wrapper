@@ -11,7 +11,11 @@ import (
 // Idempotently injects the include line into smb.conf.
 // Returns 0 on success, 1 on error.
 func runSmbInjectImpl(args []string) int {
-	if err := smb.Inject(smb.DefaultSmbConfPath, smb.DefaultIncludeLine); err != nil {
+	return runSmbInjectImplWithPath(args, smb.DefaultSmbConfPath)
+}
+
+func runSmbInjectImplWithPath(args []string, smbConfPath string) int {
+	if err := smb.Inject(smbConfPath, smb.DefaultIncludeLine); err != nil {
 		fmt.Fprintf(os.Stderr, "unas-custom: smb inject: %v\n", err)
 		return 1
 	}

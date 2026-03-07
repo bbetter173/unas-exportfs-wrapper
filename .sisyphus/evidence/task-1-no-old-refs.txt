@@ -1,0 +1,3 @@
+=== Old References Check ===
+Command: grep -r 'exportfs-wrapper' --include='*.go' .
+✓ No old references found - module rename complete

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "mcp-ssh": {
+      "enabled": true,
+      "type": "local",
+      "command": ["bunx", "@aiondadotcom/mcp-ssh"]
+    }
+  }
+}

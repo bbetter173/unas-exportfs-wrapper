@@ -1,0 +1,5 @@
+rules:
+  - path: "/var/nfs/shared/Media"
+    options: "rw,sync,no_subtree_check,insecure,all_squash,anonuid=977,anongid=988"
+  - path: "/var/nfs/shared/Photos"
+    options: "rw,async,no_root_squash,no_subtree_check"

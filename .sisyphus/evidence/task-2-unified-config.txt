@@ -1,0 +1,25 @@
+=== RUN   TestLoadUnifiedConfig
+--- PASS: TestLoadUnifiedConfig (0.00s)
+=== RUN   TestLoadNFSOnly
+--- PASS: TestLoadNFSOnly (0.00s)
+=== RUN   TestLoadSMBOnly
+--- PASS: TestLoadSMBOnly (0.00s)
+=== RUN   TestLoadEmptySections
+--- PASS: TestLoadEmptySections (0.00s)
+=== RUN   TestLoadMissingFile
+--- PASS: TestLoadMissingFile (0.00s)
+=== RUN   TestLoadMalformedYAML
+--- PASS: TestLoadMalformedYAML (0.00s)
+=== RUN   TestFindRule_Match
+--- PASS: TestFindRule_Match (0.00s)
+=== RUN   TestFindRule_NoMatch
+--- PASS: TestFindRule_NoMatch (0.00s)
+=== RUN   TestFindSMBOverride_Match
+--- PASS: TestFindSMBOverride_Match (0.00s)
+=== RUN   TestFindSMBOverride_NoMatch
+--- PASS: TestFindSMBOverride_NoMatch (0.00s)
+=== RUN   TestConfigValidation_EmptyShareName
+--- PASS: TestConfigValidation_EmptyShareName (0.00s)
+PASS
+coverage: 91.3% of statements
+ok  	github.com/bbettridge/unas-custom/internal/config	(cached)	coverage: 91.3% of statements
