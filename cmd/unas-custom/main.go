@@ -101,14 +101,6 @@ func printHelp() {
 `)
 }
 
-func runNfsWrapper(args []string) int {
-	return 0
-}
-
-func runSmbcontrolWrapper(args []string) int {
-	return 0
-}
-
 func runInstall(args []string) int {
 	return 0
 }
@@ -122,9 +114,9 @@ func runStatus(args []string) int {
 }
 
 func runSmbApply(args []string) int {
-	return 0
+	return runSmbApplyWithPaths(args, smbApplyDefaultConfigPath, smbApplyDefaultOverridesPath)
 }
 
 func runSmbInject(args []string) int {
-	return 0
+	return runSmbInjectImpl(args)
 }
