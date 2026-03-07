@@ -1,0 +1,14 @@
+=== RUN   TestLoggerWritesToFile
+--- PASS: TestLoggerWritesToFile (0.00s)
+=== RUN   TestLoggerAppendsNotTruncates
+--- PASS: TestLoggerAppendsNotTruncates (0.00s)
+=== RUN   TestNoopLogger
+--- PASS: TestNoopLogger (0.00s)
+=== RUN   TestLoggerMissingDirectory
+--- PASS: TestLoggerMissingDirectory (0.00s)
+=== RUN   TestLogLevels
+--- PASS: TestLogLevels (0.00s)
+=== RUN   TestLoggerWithFormatting
+--- PASS: TestLoggerWithFormatting (0.00s)
+PASS
+ok  	github.com/bbettridge/unas-custom/internal/logging	(cached)
