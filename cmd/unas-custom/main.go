@@ -2,91 +2,129 @@ package main
 
 import (
 	"fmt"
-	"io/fs"
-	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"syscall"
-
-	"github.com/bbettridge/unas-custom/internal/config"
-	"github.com/bbettridge/unas-custom/internal/nfs"
-)
-
-const (
-	originalExportfs = "/usr/sbin/exportfs.orig"
-	configPath       = "/persistent/nfs-intercept/config.yaml"
-	exportsDir       = "/etc/exports.d"
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatalf("Error: %v", err)
+	switch detectMode() {
+	case "nfs-wrapper":
+		os.Exit(runNfsWrapper(os.Args[1:]))
+	case "smb-wrapper":
+		os.Exit(runSmbcontrolWrapper(os.Args[1:]))
+	default:
+		os.Exit(runCLI(os.Args[1:]))
 	}
 }
 
-func run() error {
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+func detectMode() string {
+	name := filepath.Base(os.Args[0])
+	switch name {
+	case "exportfs":
+		return "nfs-wrapper"
+	case "smbcontrol":
+		return "smb-wrapper"
+	default:
+		return "cli"
 	}
-
-	if err := modifyExports(exportsDir, cfg); err != nil {
-		return fmt.Errorf("failed to modify exports: %w", err)
-	}
-
-	return execOriginal(os.Args[1:])
 }
 
-func modifyExports(dir string, cfg *config.Config) error {
-	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() || filepath.Ext(path) != ".exports" {
-			return nil
-		}
-
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", path, err)
-		}
-
-		modified, err := nfs.ModifyContent(content, cfg)
-		if err != nil {
-			return fmt.Errorf("failed to modify %s: %w", path, err)
-		}
-
-		if err := os.WriteFile(path, modified, 0644); err != nil {
-			return fmt.Errorf("failed to write %s: %w", path, err)
-		}
-
-		return nil
-	})
-}
-
-func execOriginal(args []string) error {
-	cmd := exec.Command(originalExportfs, args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
-		}
-		return err
+func runCLI(args []string) int {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
+		printHelp()
+		return 0
 	}
 
-	return nil
+	cmd := parseSubcommand(args)
+	switch cmd {
+	case "install":
+		return runInstall(args[1:])
+	case "uninstall":
+		return runUninstall(args[1:])
+	case "status":
+		return runStatus(args[1:])
+	case "smb-apply":
+		return runSmbApply(args[2:])
+	case "smb-inject":
+		return runSmbInject(args[2:])
+	case "help":
+		printHelp()
+		return 0
+	default:
+		fmt.Fprintf(os.Stderr, "unas-custom: unknown command %q\n\n", args[0])
+		printHelp()
+		return 1
+	}
 }
 
-func init() {
-	log.SetFlags(0)
-	log.SetPrefix("unas-custom: ")
-
-	if _, err := os.Stat(originalExportfs); os.IsNotExist(err) {
-		syscall.Exec(originalExportfs, os.Args, os.Environ())
+func parseSubcommand(args []string) string {
+	if len(args) == 0 {
+		return "help"
 	}
+
+	if args[0] == "--help" || args[0] == "-h" {
+		return "help"
+	}
+
+	if args[0] == "smb" && len(args) >= 2 {
+		switch args[1] {
+		case "apply":
+			return "smb-apply"
+		case "inject":
+			return "smb-inject"
+		}
+	}
+
+	switch args[0] {
+	case "install", "uninstall", "status":
+		return args[0]
+	}
+
+	return "unknown"
+}
+
+func printHelp() {
+	fmt.Print(`unas-custom: UniFi NAS customization tool
+
+  Usage: unas-custom <command>
+
+  Commands:
+    install       Install NFS + SMB hooks
+    uninstall     Remove all hooks
+    status        Show installation status
+    smb apply     Generate SMB override file from config
+    smb inject    Inject include line into smb.conf (idempotent)
+
+  Wrapper modes (invoked via symlink):
+    exportfs      NFS wrapper mode (intercepts exportfs calls)
+    smbcontrol    SMB wrapper mode (intercepts smbcontrol calls)
+`)
+}
+
+func runNfsWrapper(args []string) int {
+	return 0
+}
+
+func runSmbcontrolWrapper(args []string) int {
+	return 0
+}
+
+func runInstall(args []string) int {
+	return 0
+}
+
+func runUninstall(args []string) int {
+	return 0
+}
+
+func runStatus(args []string) int {
+	return 0
+}
+
+func runSmbApply(args []string) int {
+	return 0
+}
+
+func runSmbInject(args []string) int {
+	return 0
 }
