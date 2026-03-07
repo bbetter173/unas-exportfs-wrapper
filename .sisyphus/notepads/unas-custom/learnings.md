@@ -132,3 +132,12 @@
 - Must Have checks executed: all 15 checklist items pass, including `make build-arm64` producing a static 2.2MB ARM64 ELF and `go list -m all | wc -l` == 3.
 - Guardrails checked (G1/G2/G4/G8/G14/G19): no violations found via grep/go list commands.
 - DoD gap: package coverage for `cmd/unas-custom` and `internal/installer` is below the plan's >80% threshold.
+
+## Coverage boosting patterns (2026-03-07)
+- Thin wrapper functions (1-stmt) can be covered by calling system-dependent impls that fail fast (no config/paths)
+- `runCLI(["status"])`, `runCLI(["smb", "inject"])`, `runCLI(["smb", "apply"])` are safe to call in tests — they fail fast on missing system paths
+- `runNfsWrapper(nil)` and `runSmbcontrolWrapper(nil)` are safe — fail-open on missing config, then exit 1 on missing .orig binary
+- `runUninstall`/`runUninstallImpl` is safe to call without system side effects (no orig files → skip, daemon-reload fails gracefully on macOS)
+- Capturing stderr in tests: use `os.Pipe()` + reassign `os.Stderr`; safe for sequential (non-parallel) tests
+- WithPath variants enable testing functions that use hardcoded paths (e.g., `runSmbInjectImplWithPath`)
+- Making a directory at a filepath that copyFile expects as a file causes `os.Create` to fail with EISDIR — reliable test for copy error paths

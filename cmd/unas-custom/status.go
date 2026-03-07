@@ -44,7 +44,7 @@ func (s *StatusChecker) Check() int {
 	allOK := true
 
 	// Check 1: NFS wrapper
-	if fileExists(s.ExportfsOrigPath) {
+	if fileExists(s.ExportfsPath) && fileExists(s.ExportfsOrigPath) {
 		fmt.Fprintf(s.Out, "NFS wrapper:      installed ✓ (exportfs → unas-custom, original backed up)\n")
 	} else {
 		fmt.Fprintf(s.Out, "NFS wrapper:      not installed ✗\n")
@@ -52,7 +52,7 @@ func (s *StatusChecker) Check() int {
 	}
 
 	// Check 2: SMB wrapper
-	if fileExists(s.SmbcontrolOrigPath) {
+	if fileExists(s.SmbcontrolPath) && fileExists(s.SmbcontrolOrigPath) {
 		fmt.Fprintf(s.Out, "SMB wrapper:      installed ✓ (smbcontrol → unas-custom, original backed up)\n")
 	} else {
 		fmt.Fprintf(s.Out, "SMB wrapper:      not installed ✗\n")

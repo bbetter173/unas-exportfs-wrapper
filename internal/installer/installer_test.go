@@ -496,7 +496,7 @@ func TestInstall_DropInContent_ExactMatch(t *testing.T) {
 	required := []string{
 		"ExecStartPost=/persistent/unas-custom/unas-custom smb inject",
 		"ExecReload=",
-		"ExecReload=/persistent/unas-custom/unas-custom smb inject",
+		"ExecReload=/persistent/unas-custom/unas-custom smb inject || true",
 		"ExecReload=/bin/kill -HUP $MAINPID",
 	}
 	for _, line := range required {
@@ -560,5 +560,64 @@ func TestCopyFile_PermissionDenied(t *testing.T) {
 	err := copyFile(src, filepath.Join(dir, "new-dst"))
 	if err == nil {
 		t.Error("expected error when write permission denied")
+	}
+}
+
+func TestInstallWrapper_OrigAlreadyExists_SkipsBackup(t *testing.T) {
+	inst, dir := newTestInstaller(t)
+	targetPath := filepath.Join(dir, "exportfs")
+	origPath := filepath.Join(dir, "exportfs.orig")
+	binaryPath := filepath.Join(dir, "unas-custom")
+
+	os.WriteFile(targetPath, []byte("original-content"), 0755)
+	os.WriteFile(origPath, []byte("already-backed-up"), 0755)
+	os.WriteFile(binaryPath, []byte("new-binary"), 0755)
+
+	err := inst.installWrapper(binaryPath, targetPath, origPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got, _ := os.ReadFile(origPath)
+	if string(got) != "already-backed-up" {
+		t.Errorf("orig was overwritten: got %q", string(got))
+	}
+
+	got, _ = os.ReadFile(targetPath)
+	if string(got) != "new-binary" {
+		t.Errorf("target not updated: got %q", string(got))
+	}
+}
+
+func TestInstall_CreatesOverridesPlaceholder(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	// OverridesPath should not exist yet
+	if _, err := os.Stat(inst.OverridesPath); !os.IsNotExist(err) {
+		t.Fatal("expected OverridesPath to not exist before install")
+	}
+	if err := inst.Install(inst.BinaryPath); err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	if _, err := os.Stat(inst.OverridesPath); err != nil {
+		t.Errorf("OverridesPath not created: %v", err)
+	}
+}
+
+func TestInstall_DoesNotOverwriteExistingOverrides(t *testing.T) {
+	inst, _ := newTestInstaller(t)
+	// Pre-create overrides file with known content
+	existing := "# my custom overrides\n"
+	if err := os.WriteFile(inst.OverridesPath, []byte(existing), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := inst.Install(inst.BinaryPath); err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	got, err := os.ReadFile(inst.OverridesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != existing {
+		t.Errorf("overrides file was overwritten: got %q, want %q", string(got), existing)
 	}
 }

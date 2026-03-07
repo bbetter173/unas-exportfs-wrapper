@@ -13,7 +13,7 @@ const dropInContent = `# Managed by unas-custom — do not edit manually
 [Service]
 ExecStartPost=/persistent/unas-custom/unas-custom smb inject
 ExecReload=
-ExecReload=/persistent/unas-custom/unas-custom smb inject
+ExecReload=/persistent/unas-custom/unas-custom smb inject || true
 ExecReload=/bin/kill -HUP $MAINPID
 `
 
@@ -99,11 +99,25 @@ func (i *Installer) Install(binaryPath string) error {
 		return fmt.Errorf("injecting smb include: %w", err)
 	}
 
+	// Write placeholder smb-overrides.conf if it doesn't already exist.
+	// The real content is populated by "smb apply"; this ensures Samba
+	// can load the include line without error immediately after install.
+	if _, err := os.Stat(i.OverridesPath); os.IsNotExist(err) {
+		placeholder, _ := smb.GenerateOverrides(nil)
+		if err := os.WriteFile(i.OverridesPath, []byte(placeholder), 0644); err != nil {
+			return fmt.Errorf("writing smb overrides placeholder: %w", err)
+		}
+	}
+
 	return nil
 }
 
 func (i *Installer) installWrapper(binaryPath, targetPath, origPath string) error {
-	if _, err := os.Stat(origPath); os.IsNotExist(err) {
+	if _, err := os.Stat(origPath); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("checking backup %s: %w", origPath, err)
+		}
+		// origPath does not exist — back up target before overwriting
 		if err := copyFile(targetPath, origPath); err != nil {
 			return fmt.Errorf("backing up %s: %w", targetPath, err)
 		}

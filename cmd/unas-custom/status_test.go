@@ -28,7 +28,13 @@ func TestStatus_AllInstalled(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
 	// Create all required files
+	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "smbcontrol"), []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "smbcontrol.orig"), []byte(""), 0644); err != nil {
@@ -125,7 +131,10 @@ func TestStatus_NothingInstalled(t *testing.T) {
 func TestStatus_PartialInstall_NFSOnly(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
-	// Create only exportfs.orig
+	// Create both exportfs and exportfs.orig
+	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +167,13 @@ func TestStatus_PartialInstall_NoDropIn(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
 	// Create wrappers but no drop-in
+	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "smbcontrol"), []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "smbcontrol.orig"), []byte(""), 0644); err != nil {
@@ -211,7 +226,13 @@ func TestStatus_BrokenConfig(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
 	// Create all files except config
+	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "smbcontrol"), []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "smbcontrol.orig"), []byte(""), 0644); err != nil {
@@ -268,7 +289,7 @@ func TestStatus_ExitCodes(t *testing.T) {
 		{
 			name: "all_ok",
 			setup: func(dir string) error {
-				files := []string{"exportfs.orig", "smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"}
+				files := []string{"exportfs", "exportfs.orig", "smbcontrol", "smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"}
 				for _, f := range files {
 					if err := os.WriteFile(filepath.Join(dir, f), []byte(""), 0644); err != nil {
 						return err
@@ -284,7 +305,7 @@ func TestStatus_ExitCodes(t *testing.T) {
 		{
 			name: "missing_exportfs_orig",
 			setup: func(dir string) error {
-				files := []string{"smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"}
+				files := []string{"smbcontrol", "smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"}
 				for _, f := range files {
 					if err := os.WriteFile(filepath.Join(dir, f), []byte(""), 0644); err != nil {
 						return err
@@ -315,6 +336,42 @@ func TestStatus_ExitCodes(t *testing.T) {
 				t.Logf("output:\n%s", buf.String())
 			}
 		})
+	}
+}
+
+func TestStatus_NfsWrapper_OrigExistsButTargetMissing(t *testing.T) {
+	checker, dir := newTestChecker(t)
+	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte("orig"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	checker.Out = &buf
+	result := checker.Check()
+
+	if result == 0 {
+		t.Error("expected non-zero exit when target missing but orig exists")
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("NFS wrapper:      not installed")) {
+		t.Errorf("expected 'not installed' in output, got: %s", buf.String())
+	}
+}
+
+func TestStatus_SmbWrapper_OrigExistsButTargetMissing(t *testing.T) {
+	checker, dir := newTestChecker(t)
+	if err := os.WriteFile(filepath.Join(dir, "smbcontrol.orig"), []byte("orig"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	checker.Out = &buf
+	result := checker.Check()
+
+	if result == 0 {
+		t.Error("expected non-zero exit when target missing but orig exists")
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("SMB wrapper:      not installed")) {
+		t.Errorf("expected 'not installed' in output, got: %s", buf.String())
 	}
 }
 
