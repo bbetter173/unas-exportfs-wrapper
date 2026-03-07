@@ -11,7 +11,7 @@ import (
 
 const dropInContent = `# Managed by unas-custom — do not edit manually
 [Service]
-ExecStartPost=/persistent/unas-custom/unas-custom smb inject
+ExecStartPre=/persistent/unas-custom/unas-custom smb inject
 ExecReload=
 ExecReload=/persistent/unas-custom/unas-custom smb inject || true
 ExecReload=/bin/kill -HUP $MAINPID
@@ -113,16 +113,21 @@ func (i *Installer) Install(binaryPath string) error {
 }
 
 func (i *Installer) installWrapper(binaryPath, targetPath, origPath string) error {
+	if _, err := os.Stat(binaryPath); err != nil {
+		return fmt.Errorf("installing wrapper to %s: %w", targetPath, err)
+	}
 	if _, err := os.Stat(origPath); err != nil {
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("checking backup %s: %w", origPath, err)
 		}
-		// origPath does not exist — back up target before overwriting
 		if err := copyFile(targetPath, origPath); err != nil {
 			return fmt.Errorf("backing up %s: %w", targetPath, err)
 		}
 	}
-	if err := copyFile(binaryPath, targetPath); err != nil {
+	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing existing %s: %w", targetPath, err)
+	}
+	if err := os.Symlink(binaryPath, targetPath); err != nil {
 		return fmt.Errorf("installing wrapper to %s: %w", targetPath, err)
 	}
 	return nil
@@ -156,6 +161,9 @@ func (i *Installer) uninstallWrapper(targetPath, origPath, name string) error {
 	if _, err := os.Stat(origPath); os.IsNotExist(err) {
 		fmt.Fprintf(i.Stdout, "unas-custom: %s wrapper not installed (no backup found at %s)\n", name, origPath)
 		return nil
+	}
+	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing %s wrapper: %w", name, err)
 	}
 	if err := copyFile(origPath, targetPath); err != nil {
 		return fmt.Errorf("restoring %s original: %w", name, err)

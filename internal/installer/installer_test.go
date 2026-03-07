@@ -48,12 +48,12 @@ func TestInstall_NFS_BackupsExportfs(t *testing.T) {
 	if string(data) != "original exportfs" {
 		t.Errorf("exportfs.orig = %q, want %q", string(data), "original exportfs")
 	}
-	data, err = os.ReadFile(inst.ExportfsPath)
+	target, err := os.Readlink(inst.ExportfsPath)
 	if err != nil {
-		t.Fatalf("exportfs not installed: %v", err)
+		t.Fatalf("exportfs is not a symlink: %v", err)
 	}
-	if string(data) != "fake binary" {
-		t.Errorf("exportfs = %q, want %q", string(data), "fake binary")
+	if target != inst.BinaryPath {
+		t.Errorf("exportfs symlink = %q, want %q", target, inst.BinaryPath)
 	}
 }
 
@@ -67,9 +67,12 @@ func TestInstall_NFS_AlreadyInstalled(t *testing.T) {
 	if string(data) != "sentinel original" {
 		t.Errorf("exportfs.orig was overwritten; got %q, want %q", string(data), "sentinel original")
 	}
-	data, _ = os.ReadFile(inst.ExportfsPath)
-	if string(data) != "fake binary" {
-		t.Errorf("exportfs not updated; got %q, want %q", string(data), "fake binary")
+	target, err := os.Readlink(inst.ExportfsPath)
+	if err != nil {
+		t.Fatalf("exportfs is not a symlink: %v", err)
+	}
+	if target != inst.BinaryPath {
+		t.Errorf("exportfs symlink = %q, want %q", target, inst.BinaryPath)
 	}
 }
 
@@ -85,9 +88,12 @@ func TestInstall_SMB_BackupsSmbcontrol(t *testing.T) {
 	if string(data) != "original smbcontrol" {
 		t.Errorf("smbcontrol.orig = %q, want %q", string(data), "original smbcontrol")
 	}
-	data, _ = os.ReadFile(inst.SmbcontrolPath)
-	if string(data) != "fake binary" {
-		t.Errorf("smbcontrol = %q, want %q", string(data), "fake binary")
+	target, err := os.Readlink(inst.SmbcontrolPath)
+	if err != nil {
+		t.Fatalf("smbcontrol is not a symlink: %v", err)
+	}
+	if target != inst.BinaryPath {
+		t.Errorf("smbcontrol symlink = %q, want %q", target, inst.BinaryPath)
 	}
 }
 
@@ -126,7 +132,7 @@ func TestInstall_SMB_DropInContent(t *testing.T) {
 	requiredLines := []string{
 		"# Managed by unas-custom",
 		"[Service]",
-		"ExecStartPost=/persistent/unas-custom/unas-custom smb inject",
+		"ExecStartPre=/persistent/unas-custom/unas-custom smb inject",
 		"ExecReload=",
 		"ExecReload=/persistent/unas-custom/unas-custom smb inject",
 		"ExecReload=/bin/kill -HUP $MAINPID",
@@ -397,8 +403,10 @@ func TestUninstall_DaemonReloadError(t *testing.T) {
 func TestInstallWrapper_BackupFails(t *testing.T) {
 	inst, _ := newTestInstaller(t)
 	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "binary")
+	os.WriteFile(binaryPath, []byte("bin"), 0755)
 	err := inst.installWrapper(
-		filepath.Join(dir, "binary"),
+		binaryPath,
 		filepath.Join(dir, "nonexistent-target"),
 		filepath.Join(dir, "nonexistent-orig"),
 	)
@@ -494,7 +502,7 @@ func TestInstall_DropInContent_ExactMatch(t *testing.T) {
 
 	s := string(content)
 	required := []string{
-		"ExecStartPost=/persistent/unas-custom/unas-custom smb inject",
+		"ExecStartPre=/persistent/unas-custom/unas-custom smb inject",
 		"ExecReload=",
 		"ExecReload=/persistent/unas-custom/unas-custom smb inject || true",
 		"ExecReload=/bin/kill -HUP $MAINPID",
@@ -583,9 +591,12 @@ func TestInstallWrapper_OrigAlreadyExists_SkipsBackup(t *testing.T) {
 		t.Errorf("orig was overwritten: got %q", string(got))
 	}
 
-	got, _ = os.ReadFile(targetPath)
-	if string(got) != "new-binary" {
-		t.Errorf("target not updated: got %q", string(got))
+	target, err := os.Readlink(targetPath)
+	if err != nil {
+		t.Fatalf("target is not a symlink: %v", err)
+	}
+	if target != binaryPath {
+		t.Errorf("target symlink = %q, want %q", target, binaryPath)
 	}
 }
 

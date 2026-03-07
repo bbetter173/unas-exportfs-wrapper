@@ -14,6 +14,7 @@ type StatusChecker struct {
 	ExportfsOrigPath   string
 	SmbcontrolPath     string
 	SmbcontrolOrigPath string
+	WrapperBinaryPath  string
 	DropInPath         string
 	SmbConfPath        string
 	IncludeLine        string
@@ -28,6 +29,7 @@ func NewStatusChecker() *StatusChecker {
 		ExportfsOrigPath:   "/usr/sbin/exportfs.orig",
 		SmbcontrolPath:     "/usr/bin/smbcontrol",
 		SmbcontrolOrigPath: "/usr/bin/smbcontrol.orig",
+		WrapperBinaryPath:  "/persistent/unas-custom/unas-custom",
 		DropInPath:         "/etc/systemd/system/smbd.service.d/unas-custom.conf",
 		SmbConfPath:        "/etc/samba/smb.conf",
 		IncludeLine:        "include = /persistent/unas-custom/smb-overrides.conf",
@@ -44,7 +46,7 @@ func (s *StatusChecker) Check() int {
 	allOK := true
 
 	// Check 1: NFS wrapper
-	if fileExists(s.ExportfsPath) && fileExists(s.ExportfsOrigPath) {
+	if isSymlinkTo(s.ExportfsPath, s.WrapperBinaryPath) && fileExists(s.ExportfsOrigPath) {
 		fmt.Fprintf(s.Out, "NFS wrapper:      installed ✓ (exportfs → unas-custom, original backed up)\n")
 	} else {
 		fmt.Fprintf(s.Out, "NFS wrapper:      not installed ✗\n")
@@ -52,7 +54,7 @@ func (s *StatusChecker) Check() int {
 	}
 
 	// Check 2: SMB wrapper
-	if fileExists(s.SmbcontrolPath) && fileExists(s.SmbcontrolOrigPath) {
+	if isSymlinkTo(s.SmbcontrolPath, s.WrapperBinaryPath) && fileExists(s.SmbcontrolOrigPath) {
 		fmt.Fprintf(s.Out, "SMB wrapper:      installed ✓ (smbcontrol → unas-custom, original backed up)\n")
 	} else {
 		fmt.Fprintf(s.Out, "SMB wrapper:      not installed ✗\n")
@@ -100,6 +102,14 @@ func (s *StatusChecker) Check() int {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+func isSymlinkTo(path, expectedTarget string) bool {
+	target, err := os.Readlink(path)
+	if err != nil {
+		return false
+	}
+	return target == expectedTarget
 }
 
 func (s *StatusChecker) checkSmbInclude() bool {

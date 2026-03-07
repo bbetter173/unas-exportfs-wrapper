@@ -8,7 +8,7 @@ import (
 
 const (
 	DefaultSmbConfPath = "/etc/samba/smb.conf"
-	DefaultIncludeLine = "include = /persistent/unas-custom/smb-overrides.conf"
+	DefaultIncludeLine = "  include = /persistent/unas-custom/smb-overrides.conf"
 	ShareConfInclude   = "include = /etc/samba/share.conf"
 )
 

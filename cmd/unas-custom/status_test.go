@@ -10,11 +10,17 @@ import (
 
 func newTestChecker(t *testing.T) (*StatusChecker, string) {
 	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "unas-custom")
+	// Create the binary file that symlinks will point to
+	if err := os.WriteFile(binaryPath, []byte("binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
 	return &StatusChecker{
 		ExportfsPath:       filepath.Join(dir, "exportfs"),
 		ExportfsOrigPath:   filepath.Join(dir, "exportfs.orig"),
 		SmbcontrolPath:     filepath.Join(dir, "smbcontrol"),
 		SmbcontrolOrigPath: filepath.Join(dir, "smbcontrol.orig"),
+		WrapperBinaryPath:  binaryPath,
 		DropInPath:         filepath.Join(dir, "unas-custom.conf"),
 		SmbConfPath:        filepath.Join(dir, "smb.conf"),
 		IncludeLine:        "include = /persistent/unas-custom/smb-overrides.conf",
@@ -27,14 +33,13 @@ func newTestChecker(t *testing.T) (*StatusChecker, string) {
 func TestStatus_AllInstalled(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
-	// Create all required files
-	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+	if err := os.Symlink(checker.WrapperBinaryPath, filepath.Join(dir, "exportfs")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "smbcontrol"), []byte(""), 0644); err != nil {
+	if err := os.Symlink(checker.WrapperBinaryPath, filepath.Join(dir, "smbcontrol")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "smbcontrol.orig"), []byte(""), 0644); err != nil {
@@ -131,8 +136,7 @@ func TestStatus_NothingInstalled(t *testing.T) {
 func TestStatus_PartialInstall_NFSOnly(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
-	// Create both exportfs and exportfs.orig
-	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+	if err := os.Symlink(checker.WrapperBinaryPath, filepath.Join(dir, "exportfs")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
@@ -166,14 +170,13 @@ func TestStatus_PartialInstall_NFSOnly(t *testing.T) {
 func TestStatus_PartialInstall_NoDropIn(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
-	// Create wrappers but no drop-in
-	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+	if err := os.Symlink(checker.WrapperBinaryPath, filepath.Join(dir, "exportfs")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "smbcontrol"), []byte(""), 0644); err != nil {
+	if err := os.Symlink(checker.WrapperBinaryPath, filepath.Join(dir, "smbcontrol")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "smbcontrol.orig"), []byte(""), 0644); err != nil {
@@ -225,14 +228,13 @@ smb:
 func TestStatus_BrokenConfig(t *testing.T) {
 	checker, dir := newTestChecker(t)
 
-	// Create all files except config
-	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte(""), 0644); err != nil {
+	if err := os.Symlink(checker.WrapperBinaryPath, filepath.Join(dir, "exportfs")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "smbcontrol"), []byte(""), 0644); err != nil {
+	if err := os.Symlink(checker.WrapperBinaryPath, filepath.Join(dir, "smbcontrol")); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "smbcontrol.orig"), []byte(""), 0644); err != nil {
@@ -289,9 +291,14 @@ func TestStatus_ExitCodes(t *testing.T) {
 		{
 			name: "all_ok",
 			setup: func(dir string) error {
-				files := []string{"exportfs", "exportfs.orig", "smbcontrol", "smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"}
-				for _, f := range files {
-					if err := os.WriteFile(filepath.Join(dir, f), []byte(""), 0644); err != nil {
+				binaryPath := filepath.Join(dir, "unas-custom")
+				for _, name := range []string{"exportfs", "smbcontrol"} {
+					if err := os.Symlink(binaryPath, filepath.Join(dir, name)); err != nil {
+						return err
+					}
+				}
+				for _, name := range []string{"exportfs.orig", "smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"} {
+					if err := os.WriteFile(filepath.Join(dir, name), []byte(""), 0644); err != nil {
 						return err
 					}
 				}
@@ -305,9 +312,12 @@ func TestStatus_ExitCodes(t *testing.T) {
 		{
 			name: "missing_exportfs_orig",
 			setup: func(dir string) error {
-				files := []string{"smbcontrol", "smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"}
-				for _, f := range files {
-					if err := os.WriteFile(filepath.Join(dir, f), []byte(""), 0644); err != nil {
+				binaryPath := filepath.Join(dir, "unas-custom")
+				if err := os.Symlink(binaryPath, filepath.Join(dir, "smbcontrol")); err != nil {
+					return err
+				}
+				for _, name := range []string{"smbcontrol.orig", "unas-custom.conf", "smb-overrides.conf"} {
+					if err := os.WriteFile(filepath.Join(dir, name), []byte(""), 0644); err != nil {
 						return err
 					}
 				}
@@ -371,6 +381,54 @@ func TestStatus_SmbWrapper_OrigExistsButTargetMissing(t *testing.T) {
 		t.Error("expected non-zero exit when target missing but orig exists")
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("SMB wrapper:      not installed")) {
+		t.Errorf("expected 'not installed' in output, got: %s", buf.String())
+	}
+}
+
+func TestStatus_NfsWrapper_SymlinkWrongTarget(t *testing.T) {
+	checker, dir := newTestChecker(t)
+
+	wrongTarget := filepath.Join(dir, "wrong-binary")
+	if err := os.WriteFile(wrongTarget, []byte("wrong"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(wrongTarget, filepath.Join(dir, "exportfs")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte("orig"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	checker.Out = &buf
+	result := checker.Check()
+
+	if result == 0 {
+		t.Error("expected non-zero exit when symlink points to wrong target")
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("NFS wrapper:      not installed")) {
+		t.Errorf("expected 'not installed' in output, got: %s", buf.String())
+	}
+}
+
+func TestStatus_NfsWrapper_RegularFileNotSymlink(t *testing.T) {
+	checker, dir := newTestChecker(t)
+
+	if err := os.WriteFile(filepath.Join(dir, "exportfs"), []byte("not a symlink"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "exportfs.orig"), []byte("orig"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	checker.Out = &buf
+	result := checker.Check()
+
+	if result == 0 {
+		t.Error("expected non-zero exit when exportfs is a regular file, not a symlink")
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("NFS wrapper:      not installed")) {
 		t.Errorf("expected 'not installed' in output, got: %s", buf.String())
 	}
 }
