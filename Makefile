@@ -1,8 +1,8 @@
-.PHONY: all build build-arm64 clean deploy
+.PHONY: all build build-arm64 clean deploy symlink test lint
 
-BINARY_NAME=exportfs-wrapper
+BINARY_NAME=unas-custom
 BUILD_DIR=build
-CMD_DIR=cmd/exportfs-wrapper
+CMD_DIR=cmd/unas-custom
 
 all: build-arm64 deploy
 
@@ -19,6 +19,21 @@ clean:
 	@echo "Cleaning build directory..."
 	rm -rf $(BUILD_DIR)
 
+symlink: deploy
+	@echo "Creating symlinks..."
+	ln -sf $(BINARY_NAME) $(BUILD_DIR)/deploy/exportfs
+	ln -sf $(BINARY_NAME) $(BUILD_DIR)/deploy/smbcontrol
+	@echo "Symlinks created: exportfs -> $(BINARY_NAME), smbcontrol -> $(BINARY_NAME)"
+
+test:
+	@echo "Running tests..."
+	go test -v -race ./...
+
+lint:
+	@echo "Linting code..."
+	go vet ./... && test -z "$$(gofmt -l .)"
+	@echo "Lint passed!"
+
 deploy: build-arm64
 	@echo "Creating deployment package..."
 	mkdir -p $(BUILD_DIR)/deploy
@@ -29,4 +44,4 @@ deploy: build-arm64
 	chmod +x $(BUILD_DIR)/deploy/*.sh
 	@echo ""
 	@echo "Deployment package ready in $(BUILD_DIR)/deploy/"
-	@echo "Copy to UNAS: scp -r $(BUILD_DIR)/deploy/* root@unas:/persistent/nfs-intercept/"
+	@echo "Copy to UNAS: scp -r $(BUILD_DIR)/deploy/* root@unas:/persistent/unas-custom/"
