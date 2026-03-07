@@ -7,18 +7,29 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Rule defines a path-based NFS export modification rule
-type Rule struct {
+type NFSRule struct {
 	Path    string `yaml:"path"`
 	Options string `yaml:"options"`
 }
 
-// Config represents the application configuration
-type Config struct {
-	Rules []Rule `yaml:"rules"`
+type NFSConfig struct {
+	Rules []NFSRule `yaml:"rules"`
 }
 
-// Load reads and parses the configuration file
+type SMBOverride struct {
+	Share      string            `yaml:"share"`
+	Directives map[string]string `yaml:"directives"`
+}
+
+type SMBConfig struct {
+	Overrides []SMBOverride `yaml:"overrides"`
+}
+
+type Config struct {
+	NFS NFSConfig `yaml:"nfs"`
+	SMB SMBConfig `yaml:"smb"`
+}
+
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -30,24 +41,37 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Validate rules
-	for i, rule := range cfg.Rules {
+	for i, rule := range cfg.NFS.Rules {
 		if rule.Path == "" {
-			return nil, fmt.Errorf("rule %d: path cannot be empty", i)
+			return nil, fmt.Errorf("nfs rule %d: path cannot be empty", i)
 		}
 		if rule.Options == "" {
-			return nil, fmt.Errorf("rule %d: options cannot be empty", i)
+			return nil, fmt.Errorf("nfs rule %d: options cannot be empty", i)
+		}
+	}
+
+	for i, override := range cfg.SMB.Overrides {
+		if override.Share == "" {
+			return nil, fmt.Errorf("smb override %d: share cannot be empty", i)
 		}
 	}
 
 	return &cfg, nil
 }
 
-// FindRule returns the rule matching the given path, or nil if not found
-func (c *Config) FindRule(path string) *Rule {
-	for i := range c.Rules {
-		if c.Rules[i].Path == path {
-			return &c.Rules[i]
+func (c *Config) FindRule(path string) *NFSRule {
+	for i := range c.NFS.Rules {
+		if c.NFS.Rules[i].Path == path {
+			return &c.NFS.Rules[i]
+		}
+	}
+	return nil
+}
+
+func (c *Config) FindSMBOverride(share string) *SMBOverride {
+	for i := range c.SMB.Overrides {
+		if c.SMB.Overrides[i].Share == share {
+			return &c.SMB.Overrides[i]
 		}
 	}
 	return nil
