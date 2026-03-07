@@ -101,13 +101,9 @@ func printHelp() {
 `)
 }
 
-func runInstall(args []string) int {
-	return 0
-}
+func runInstall(args []string) int { return runInstallImpl(args) }
 
-func runUninstall(args []string) int {
-	return 0
-}
+func runUninstall(args []string) int { return runUninstallImpl(args) }
 
 func runStatus(args []string) int {
 	return 0
