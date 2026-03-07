@@ -1,0 +1,37 @@
+=== RUN   TestParseExport_ValidSingleClient
+--- PASS: TestParseExport_ValidSingleClient (0.00s)
+=== RUN   TestParseExport_ValidMultipleClients
+--- PASS: TestParseExport_ValidMultipleClients (0.00s)
+=== RUN   TestParseExport_Comment
+--- PASS: TestParseExport_Comment (0.00s)
+=== RUN   TestParseExport_Empty
+--- PASS: TestParseExport_Empty (0.00s)
+=== RUN   TestParseExport_Whitespace
+--- PASS: TestParseExport_Whitespace (0.00s)
+=== RUN   TestParseExport_Invalid
+--- PASS: TestParseExport_Invalid (0.00s)
+=== RUN   TestExportString_RoundTrip
+--- PASS: TestExportString_RoundTrip (0.00s)
+=== RUN   TestModifyContent_MatchingRule
+--- PASS: TestModifyContent_MatchingRule (0.00s)
+=== RUN   TestModifyContent_NoMatch
+--- PASS: TestModifyContent_NoMatch (0.00s)
+=== RUN   TestModifyContent_MultipleClients
+--- PASS: TestModifyContent_MultipleClients (0.00s)
+=== RUN   TestModifyContent_MixedContent
+--- PASS: TestModifyContent_MixedContent (0.00s)
+=== RUN   TestModifyContent_EmptyConfig
+--- PASS: TestModifyContent_EmptyConfig (0.00s)
+=== RUN   TestModifyContent_InvalidLine
+--- PASS: TestModifyContent_InvalidLine (0.00s)
+=== RUN   TestClient_Structure
+--- PASS: TestClient_Structure (0.00s)
+=== RUN   TestExport_Structure
+--- PASS: TestExport_Structure (0.00s)
+=== RUN   TestParseExport_WithLeadingTrailingWhitespace
+--- PASS: TestParseExport_WithLeadingTrailingWhitespace (0.00s)
+=== RUN   TestModifyContent_MultipleRules
+--- PASS: TestModifyContent_MultipleRules (0.00s)
+PASS
+coverage: 95.5% of statements
+ok  	github.com/bbettridge/unas-custom/internal/nfs	(cached)	coverage: 95.5% of statements
