@@ -47,8 +47,14 @@ jobs:
           exit 1
         fi
 
+    - name: Check dependency count
+      run: test $(go list -m all | wc -l) -le 3
+
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      run: make test
+
+    - name: Run lint
+      run: make lint
 
     - name: Build for linux/arm64
       run: make build-arm64
@@ -59,7 +65,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: exportfs-wrapper-arm64
+        name: unas-custom-arm64
         path: build/deploy/
         retention-days: 30
 
@@ -93,13 +99,13 @@ jobs:
     - name: Create tarball
       run: |
         cd build/deploy
-        tar -czf ../exportfs-wrapper-${{ github.ref_name }}-arm64.tar.gz *
+        tar -czf ../unas-custom-${{ github.ref_name }}-arm64.tar.gz *
         cd ../..
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        files: build/exportfs-wrapper-${{ github.ref_name }}-arm64.tar.gz
+        files: build/unas-custom-${{ github.ref_name }}-arm64.tar.gz
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
