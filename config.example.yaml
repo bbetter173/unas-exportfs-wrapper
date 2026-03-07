@@ -1,5 +1,25 @@
-rules:
-  - path: "/var/nfs/shared/Media"
-    options: "rw,sync,no_subtree_check,insecure,all_squash,anonuid=977,anongid=988"
-  - path: "/var/nfs/shared/Photos"
-    options: "rw,async,no_root_squash,no_subtree_check"
+# unas-custom configuration
+# Place this file at /persistent/unas-custom/config.yaml
+
+# NFS export option overrides
+# Replaces options for matching export paths (path must match exactly)
+nfs:
+  rules:
+    - path: "/var/nfs/shared/Media"
+      options: "rw,sync,no_subtree_check,insecure,all_squash,anonuid=977,anongid=988"
+    - path: "/var/nfs/shared/Backups"
+      options: "rw,sync,no_subtree_check,insecure,no_root_squash"
+
+# SMB share parameter overrides
+# Adds/overrides directives in existing Samba shares (share name must match exactly)
+smb:
+  overrides:
+    - share: "Media"
+      directives:
+        guest ok: "yes"
+        create mask: "0664"
+        directory mask: "0775"
+    - share: "Backups"
+      directives:
+        read only: "no"
+        force user: "root"
