@@ -296,7 +296,7 @@ func TestRemove_PreservesContent(t *testing.T) {
 
 	resultStr := string(result)
 	for _, line := range strings.Split(content, "\n") {
-		if line != "" && !strings.Contains(line, DefaultIncludeLine) && !strings.Contains(resultStr, line) {
+		if line != "" && strings.TrimSpace(line) != strings.TrimSpace(DefaultIncludeLine) && !strings.Contains(resultStr, line) {
 			t.Errorf("content was lost: %q", line)
 		}
 	}
