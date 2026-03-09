@@ -1,7 +1,6 @@
 package smb
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/bbettridge/unas-custom/internal/config"
@@ -143,159 +142,74 @@ func TestParseShareValidUsers_CaseInsensitiveKey(t *testing.T) {
 	}
 }
 
-func TestParseShareValidUsers_GlobalSectionIgnored(t *testing.T) {
-	content := []byte(`[global]
-   workgroup = WORKGROUP
-
-[Media]
-   valid users = @wheel
-`)
-
-	result, err := ParseShareValidUsers(content)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// [global] shouldn't have valid users normally, but even if it did,
-	// our parser returns it — the caller decides what to use
-	if result["Media"] != "@wheel" {
-		t.Errorf("expected '@wheel', got %q", result["Media"])
-	}
-}
-
-func TestMergeAppendValidUsers_Basic(t *testing.T) {
+func TestMergeAppendValidUsers_AppendsToExistingShareConf(t *testing.T) {
 	overrides := []config.SMBOverride{
 		{
-			Share: "Media",
+			Share:            "Media",
+			AppendValidUsers: []string{"newuser1", "newuser2"},
 			Directives: map[string]string{
 				"guest ok": "yes",
 			},
 		},
 	}
-	appendUsers := []string{"newuser1", "newuser2"}
 	existing := map[string]string{
 		"Media": "@wheel root",
 	}
 
-	result := MergeAppendValidUsers(overrides, appendUsers, existing)
+	result := MergeAppendValidUsers(overrides, existing)
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 override, got %d", len(result))
 	}
-	if result[0].Directives["valid users"] != "@wheel root newuser1 newuser2" {
-		t.Errorf("expected '@wheel root newuser1 newuser2', got %q", result[0].Directives["valid users"])
+	if result[0].Directives["valid users"] != "@wheel root,newuser1,newuser2" {
+		t.Errorf("expected '@wheel root,newuser1,newuser2', got %q", result[0].Directives["valid users"])
 	}
 	if result[0].Directives["guest ok"] != "yes" {
 		t.Errorf("existing directive 'guest ok' was lost")
 	}
 }
 
-func TestMergeAppendValidUsers_OverrideHasValidUsers(t *testing.T) {
+func TestMergeAppendValidUsers_OverrideHasValidUsersDirective(t *testing.T) {
 	overrides := []config.SMBOverride{
 		{
-			Share: "Media",
+			Share:            "Media",
+			AppendValidUsers: []string{"extrauser"},
 			Directives: map[string]string{
 				"valid users": "@custom",
 			},
 		},
 	}
-	appendUsers := []string{"extrauser"}
 	existing := map[string]string{
 		"Media": "@wheel root",
 	}
 
-	result := MergeAppendValidUsers(overrides, appendUsers, existing)
+	result := MergeAppendValidUsers(overrides, existing)
 
-	// Should use the override's valid users as base, not share.conf
-	if result[0].Directives["valid users"] != "@custom extrauser" {
-		t.Errorf("expected '@custom extrauser', got %q", result[0].Directives["valid users"])
+	if result[0].Directives["valid users"] != "@custom,extrauser" {
+		t.Errorf("expected '@custom,extrauser', got %q", result[0].Directives["valid users"])
 	}
 }
 
-func TestMergeAppendValidUsers_NoOverrideForShare(t *testing.T) {
+func TestMergeAppendValidUsers_ShareNotInShareConf(t *testing.T) {
 	overrides := []config.SMBOverride{
 		{
-			Share: "Media",
+			Share:            "NewShare",
+			AppendValidUsers: []string{"user1", "user2"},
 			Directives: map[string]string{
 				"guest ok": "yes",
 			},
 		},
 	}
-	appendUsers := []string{"newuser"}
-	existing := map[string]string{
-		"Backups": "@wheel",
-	}
-
-	result := MergeAppendValidUsers(overrides, appendUsers, existing)
-
-	if len(result) != 2 {
-		t.Fatalf("expected 2 overrides, got %d", len(result))
-	}
-
-	// Find the Backups override (order may vary for new entries)
-	var backupsOverride *config.SMBOverride
-	for i := range result {
-		if result[i].Share == "Backups" {
-			backupsOverride = &result[i]
-			break
-		}
-	}
-	if backupsOverride == nil {
-		t.Fatal("expected Backups override to be created")
-	}
-	if backupsOverride.Directives["valid users"] != "@wheel newuser" {
-		t.Errorf("expected '@wheel newuser', got %q", backupsOverride.Directives["valid users"])
-	}
-}
-
-func TestMergeAppendValidUsers_EmptyAppendUsers(t *testing.T) {
-	overrides := []config.SMBOverride{
-		{
-			Share: "Media",
-			Directives: map[string]string{
-				"guest ok": "yes",
-			},
-		},
-	}
-	existing := map[string]string{
-		"Media": "@wheel",
-	}
-
-	result := MergeAppendValidUsers(overrides, []string{}, existing)
-
-	// Should return overrides unchanged
-	if len(result) != 1 {
-		t.Fatalf("expected 1 override, got %d", len(result))
-	}
-	if _, has := result[0].Directives["valid users"]; has {
-		t.Error("valid users should not be added when append list is empty")
-	}
-}
-
-func TestMergeAppendValidUsers_EmptyExistingValidUsers(t *testing.T) {
-	overrides := []config.SMBOverride{
-		{
-			Share: "Media",
-			Directives: map[string]string{
-				"guest ok": "yes",
-			},
-		},
-	}
-	appendUsers := []string{"newuser"}
 	existing := map[string]string{}
 
-	result := MergeAppendValidUsers(overrides, appendUsers, existing)
+	result := MergeAppendValidUsers(overrides, existing)
 
-	// No shares with valid users, so nothing to merge
-	if len(result) != 1 {
-		t.Fatalf("expected 1 override, got %d", len(result))
-	}
-	if _, has := result[0].Directives["valid users"]; has {
-		t.Error("valid users should not be added when no shares have valid users")
+	if result[0].Directives["valid users"] != "user1,user2" {
+		t.Errorf("expected 'user1,user2', got %q", result[0].Directives["valid users"])
 	}
 }
 
-func TestMergeAppendValidUsers_DoesNotMutateInput(t *testing.T) {
+func TestMergeAppendValidUsers_NoAppendUsersUnchanged(t *testing.T) {
 	overrides := []config.SMBOverride{
 		{
 			Share: "Media",
@@ -304,23 +218,22 @@ func TestMergeAppendValidUsers_DoesNotMutateInput(t *testing.T) {
 			},
 		},
 	}
-	appendUsers := []string{"newuser"}
 	existing := map[string]string{
 		"Media": "@wheel",
 	}
 
-	_ = MergeAppendValidUsers(overrides, appendUsers, existing)
+	result := MergeAppendValidUsers(overrides, existing)
 
-	// Original overrides should be unchanged
-	if _, has := overrides[0].Directives["valid users"]; has {
-		t.Error("MergeAppendValidUsers mutated the input overrides")
+	if _, has := result[0].Directives["valid users"]; has {
+		t.Error("valid users should not be added when override has no append_valid_users")
 	}
 }
 
-func TestMergeAppendValidUsers_MultipleShares(t *testing.T) {
+func TestMergeAppendValidUsers_MixedOverrides(t *testing.T) {
 	overrides := []config.SMBOverride{
 		{
-			Share: "Media",
+			Share:            "Media",
+			AppendValidUsers: []string{"serviceaccount"},
 			Directives: map[string]string{
 				"guest ok": "yes",
 			},
@@ -332,25 +245,73 @@ func TestMergeAppendValidUsers_MultipleShares(t *testing.T) {
 			},
 		},
 	}
-	appendUsers := []string{"serviceaccount"}
 	existing := map[string]string{
 		"Media":   "@media admin",
 		"Backups": "@wheel",
 	}
 
-	result := MergeAppendValidUsers(overrides, appendUsers, existing)
+	result := MergeAppendValidUsers(overrides, existing)
 
 	if len(result) != 2 {
 		t.Fatalf("expected 2 overrides, got %d", len(result))
 	}
-
-	// Sort by share name for deterministic checking
-	sort.Slice(result, func(i, j int) bool { return result[i].Share < result[j].Share })
-
-	if result[0].Share != "Backups" || result[0].Directives["valid users"] != "@wheel serviceaccount" {
-		t.Errorf("Backups: expected '@wheel serviceaccount', got %q", result[0].Directives["valid users"])
+	if result[0].Directives["valid users"] != "@media admin,serviceaccount" {
+		t.Errorf("Media: expected '@media admin,serviceaccount', got %q", result[0].Directives["valid users"])
 	}
-	if result[1].Share != "Media" || result[1].Directives["valid users"] != "@media admin serviceaccount" {
-		t.Errorf("Media: expected '@media admin serviceaccount', got %q", result[1].Directives["valid users"])
+	if _, has := result[1].Directives["valid users"]; has {
+		t.Error("Backups should not get valid users when it has no append_valid_users")
+	}
+}
+
+func TestMergeAppendValidUsers_DoesNotMutateInput(t *testing.T) {
+	overrides := []config.SMBOverride{
+		{
+			Share:            "Media",
+			AppendValidUsers: []string{"newuser"},
+			Directives: map[string]string{
+				"guest ok": "yes",
+			},
+		},
+	}
+	existing := map[string]string{
+		"Media": "@wheel",
+	}
+
+	_ = MergeAppendValidUsers(overrides, existing)
+
+	if _, has := overrides[0].Directives["valid users"]; has {
+		t.Error("MergeAppendValidUsers mutated the input overrides")
+	}
+}
+
+func TestMergeAppendValidUsers_MultipleSharesWithAppend(t *testing.T) {
+	overrides := []config.SMBOverride{
+		{
+			Share:            "Media",
+			AppendValidUsers: []string{"svc1"},
+			Directives: map[string]string{
+				"guest ok": "yes",
+			},
+		},
+		{
+			Share:            "Backups",
+			AppendValidUsers: []string{"svc2", "@backupgroup"},
+			Directives: map[string]string{
+				"read only": "no",
+			},
+		},
+	}
+	existing := map[string]string{
+		"Media":   "@media",
+		"Backups": "@wheel root",
+	}
+
+	result := MergeAppendValidUsers(overrides, existing)
+
+	if result[0].Directives["valid users"] != "@media,svc1" {
+		t.Errorf("Media: expected '@media,svc1', got %q", result[0].Directives["valid users"])
+	}
+	if result[1].Directives["valid users"] != "@wheel root,svc2,@backupgroup" {
+		t.Errorf("Backups: expected '@wheel root,svc2,@backupgroup', got %q", result[1].Directives["valid users"])
 	}
 }

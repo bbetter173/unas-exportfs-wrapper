@@ -201,11 +201,11 @@ func TestSmbApply_AppendValidUsers(t *testing.T) {
 	shareConfPath := filepath.Join(dir, "share.conf")
 
 	cfg := `smb:
-  append_valid_users:
-    - "extrauser1"
-    - "extrauser2"
   overrides:
     - share: "Media"
+      append_valid_users:
+        - "extrauser1"
+        - "extrauser2"
       directives:
         guest ok: "yes"`
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
@@ -235,7 +235,7 @@ func TestSmbApply_AppendValidUsers(t *testing.T) {
 	if !strings.Contains(s, "[Media]") {
 		t.Errorf("expected [Media] section in output, got:\n%s", s)
 	}
-	if !strings.Contains(s, "valid users = @wheel root extrauser1 extrauser2") {
+	if !strings.Contains(s, "valid users = @wheel root,extrauser1,extrauser2") {
 		t.Errorf("expected merged valid users in output, got:\n%s", s)
 	}
 	if !strings.Contains(s, "guest ok = yes") {
@@ -243,19 +243,22 @@ func TestSmbApply_AppendValidUsers(t *testing.T) {
 	}
 }
 
-func TestSmbApply_AppendValidUsersMultipleShares(t *testing.T) {
+func TestSmbApply_AppendValidUsersPerShare(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 	outPath := filepath.Join(dir, "smb-overrides.conf")
 	shareConfPath := filepath.Join(dir, "share.conf")
 
 	cfg := `smb:
-  append_valid_users:
-    - "serviceaccount"
   overrides:
     - share: "Media"
+      append_valid_users:
+        - "serviceaccount"
       directives:
-        guest ok: "yes"`
+        guest ok: "yes"
+    - share: "Backups"
+      directives:
+        read only: "no"`
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
 		t.Fatalf("failed to write config: %v", err)
 	}
@@ -285,14 +288,14 @@ func TestSmbApply_AppendValidUsersMultipleShares(t *testing.T) {
 	}
 	s := string(content)
 
-	if !strings.Contains(s, "valid users = @media admin serviceaccount") {
+	if !strings.Contains(s, "valid users = @media admin,serviceaccount") {
 		t.Errorf("expected merged Media valid users, got:\n%s", s)
 	}
 	if !strings.Contains(s, "[Backups]") {
-		t.Errorf("expected Backups section created, got:\n%s", s)
+		t.Errorf("expected Backups section, got:\n%s", s)
 	}
-	if !strings.Contains(s, "valid users = @wheel serviceaccount") {
-		t.Errorf("expected merged Backups valid users, got:\n%s", s)
+	if strings.Contains(s, "valid users = @wheel") {
+		t.Errorf("Backups should NOT have valid users merged (no append_valid_users), got:\n%s", s)
 	}
 }
 
@@ -303,9 +306,10 @@ func TestSmbApply_AppendValidUsersMissingShareConf(t *testing.T) {
 	shareConfPath := filepath.Join(dir, "nonexistent-share.conf")
 
 	cfg := `smb:
-  append_valid_users:
-    - "extrauser"
-  overrides: []`
+  overrides:
+    - share: "Media"
+      append_valid_users:
+        - "extrauser"`
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0644); err != nil {
 		t.Fatalf("failed to write config: %v", err)
 	}

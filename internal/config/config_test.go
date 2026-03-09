@@ -253,14 +253,14 @@ func TestFindSMBOverride_NoMatch(t *testing.T) {
 	}
 }
 
-// TestLoadWithAppendValidUsers tests loading config with append_valid_users
+// TestLoadWithAppendValidUsers tests loading config with per-share append_valid_users
 func TestLoadWithAppendValidUsers(t *testing.T) {
 	yaml := `smb:
-  append_valid_users:
-    - "extrauser1"
-    - "extrauser2"
   overrides:
     - share: "Media"
+      append_valid_users:
+        - "extrauser1"
+        - "extrauser2"
       directives:
         guest ok: "yes"
 `
@@ -272,36 +272,18 @@ func TestLoadWithAppendValidUsers(t *testing.T) {
 		t.Fatalf("Load failed: %v", err)
 	}
 
-	if len(cfg.SMB.AppendValidUsers) != 2 {
-		t.Fatalf("expected 2 append_valid_users, got %d", len(cfg.SMB.AppendValidUsers))
-	}
-	if cfg.SMB.AppendValidUsers[0] != "extrauser1" {
-		t.Errorf("expected 'extrauser1', got '%s'", cfg.SMB.AppendValidUsers[0])
-	}
-	if cfg.SMB.AppendValidUsers[1] != "extrauser2" {
-		t.Errorf("expected 'extrauser2', got '%s'", cfg.SMB.AppendValidUsers[1])
-	}
 	if len(cfg.SMB.Overrides) != 1 {
-		t.Errorf("expected 1 SMB override, got %d", len(cfg.SMB.Overrides))
+		t.Fatalf("expected 1 SMB override, got %d", len(cfg.SMB.Overrides))
 	}
-}
-
-// TestLoadWithAppendValidUsersEmpty tests that empty append_valid_users is valid
-func TestLoadWithAppendValidUsersEmpty(t *testing.T) {
-	yaml := `smb:
-  append_valid_users: []
-  overrides: []
-`
-	tmpFile := createTempConfig(t, yaml)
-	defer os.Remove(tmpFile)
-
-	cfg, err := Load(tmpFile)
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
+	o := cfg.SMB.Overrides[0]
+	if len(o.AppendValidUsers) != 2 {
+		t.Fatalf("expected 2 append_valid_users, got %d", len(o.AppendValidUsers))
 	}
-
-	if len(cfg.SMB.AppendValidUsers) != 0 {
-		t.Errorf("expected 0 append_valid_users, got %d", len(cfg.SMB.AppendValidUsers))
+	if o.AppendValidUsers[0] != "extrauser1" {
+		t.Errorf("expected 'extrauser1', got '%s'", o.AppendValidUsers[0])
+	}
+	if o.AppendValidUsers[1] != "extrauser2" {
+		t.Errorf("expected 'extrauser2', got '%s'", o.AppendValidUsers[1])
 	}
 }
 
@@ -321,8 +303,8 @@ func TestLoadWithAppendValidUsersOmitted(t *testing.T) {
 		t.Fatalf("Load failed: %v", err)
 	}
 
-	if cfg.SMB.AppendValidUsers != nil {
-		t.Errorf("expected nil append_valid_users when omitted, got %v", cfg.SMB.AppendValidUsers)
+	if cfg.SMB.Overrides[0].AppendValidUsers != nil {
+		t.Errorf("expected nil append_valid_users when omitted, got %v", cfg.SMB.Overrides[0].AppendValidUsers)
 	}
 }
 

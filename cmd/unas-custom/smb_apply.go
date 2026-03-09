@@ -9,6 +9,15 @@ import (
 	"github.com/bbettridge/unas-custom/internal/smb"
 )
 
+func hasAppendValidUsers(overrides []config.SMBOverride) bool {
+	for _, o := range overrides {
+		if len(o.AppendValidUsers) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 const (
 	smbApplyDefaultConfigPath    = "/persistent/unas-custom/config.yaml"
 	smbApplyDefaultOverridesPath = "/persistent/unas-custom/smb-overrides.conf"
@@ -24,7 +33,7 @@ func runSmbApplyWithPaths(args []string, configPath, overridesPath, shareConfPat
 
 	overrides := cfg.SMB.Overrides
 
-	if len(cfg.SMB.AppendValidUsers) > 0 {
+	if hasAppendValidUsers(overrides) {
 		shareData, err := os.ReadFile(shareConfPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unas-custom: smb apply: failed to read share config for valid users: %v\n", err)
@@ -35,7 +44,7 @@ func runSmbApplyWithPaths(args []string, configPath, overridesPath, shareConfPat
 			fmt.Fprintf(os.Stderr, "unas-custom: smb apply: failed to parse share config: %v\n", err)
 			return 1
 		}
-		overrides = smb.MergeAppendValidUsers(overrides, cfg.SMB.AppendValidUsers, existingValidUsers)
+		overrides = smb.MergeAppendValidUsers(overrides, existingValidUsers)
 	}
 
 	content, err := smb.GenerateOverrides(overrides)

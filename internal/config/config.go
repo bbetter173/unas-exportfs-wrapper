@@ -17,13 +17,13 @@ type NFSConfig struct {
 }
 
 type SMBOverride struct {
-	Share      string            `yaml:"share"`
-	Directives map[string]string `yaml:"directives"`
+	Share            string            `yaml:"share"`
+	Directives       map[string]string `yaml:"directives"`
+	AppendValidUsers []string          `yaml:"append_valid_users"`
 }
 
 type SMBConfig struct {
-	AppendValidUsers []string      `yaml:"append_valid_users"`
-	Overrides        []SMBOverride `yaml:"overrides"`
+	Overrides []SMBOverride `yaml:"overrides"`
 }
 
 type Config struct {

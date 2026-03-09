@@ -49,25 +49,16 @@ func ParseShareValidUsers(content []byte) (map[string]string, error) {
 	return result, scanner.Err()
 }
 
-// MergeAppendValidUsers returns a new overrides slice with append_valid_users
-// merged into each share's valid users. For shares found in existingValidUsers:
+// MergeAppendValidUsers returns a new overrides slice with each override's
+// per-share append_valid_users merged into valid users. For each override that
+// has AppendValidUsers set, it looks up the share in existingValidUsers:
 //   - If the override already has a "valid users" directive, appends to that.
 //   - Otherwise, uses the existing share.conf value as the base and appends.
-//   - If a share has no override entry, one is created with the merged valid users.
+//   - If the share has no existing valid users in share.conf, the appended
+//     users become the full valid users value.
 //
-// Shares not present in existingValidUsers are left unchanged.
-func MergeAppendValidUsers(overrides []config.SMBOverride, appendUsers []string, existingValidUsers map[string]string) []config.SMBOverride {
-	if len(appendUsers) == 0 || len(existingValidUsers) == 0 {
-		return overrides
-	}
-
-	appendStr := strings.Join(appendUsers, " ")
-
-	overrideIdx := make(map[string]int)
-	for i, o := range overrides {
-		overrideIdx[o.Share] = i
-	}
-
+// Overrides without AppendValidUsers are copied unchanged.
+func MergeAppendValidUsers(overrides []config.SMBOverride, existingValidUsers map[string]string) []config.SMBOverride {
 	result := make([]config.SMBOverride, len(overrides))
 	for i, o := range overrides {
 		result[i] = config.SMBOverride{
@@ -77,22 +68,19 @@ func MergeAppendValidUsers(overrides []config.SMBOverride, appendUsers []string,
 		for k, v := range o.Directives {
 			result[i].Directives[k] = v
 		}
-	}
 
-	for share, validUsers := range existingValidUsers {
-		if idx, ok := overrideIdx[share]; ok {
-			if existingVU, has := result[idx].Directives["valid users"]; has {
-				result[idx].Directives["valid users"] = existingVU + " " + appendStr
-			} else {
-				result[idx].Directives["valid users"] = validUsers + " " + appendStr
-			}
+		if len(o.AppendValidUsers) == 0 {
+			continue
+		}
+
+		appendStr := strings.Join(o.AppendValidUsers, ",")
+
+		if existingVU, has := result[i].Directives["valid users"]; has {
+			result[i].Directives["valid users"] = existingVU + "," + appendStr
+		} else if shareVU, found := existingValidUsers[o.Share]; found {
+			result[i].Directives["valid users"] = shareVU + "," + appendStr
 		} else {
-			result = append(result, config.SMBOverride{
-				Share: share,
-				Directives: map[string]string{
-					"valid users": validUsers + " " + appendStr,
-				},
-			})
+			result[i].Directives["valid users"] = appendStr
 		}
 	}
 
