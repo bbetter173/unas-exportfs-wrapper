@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/bbettridge/unas-custom/internal/config"
 	"github.com/bbettridge/unas-custom/internal/smb"
 )
 
@@ -31,6 +32,9 @@ type Installer struct {
 	ConfigDir     string // /persistent/unas-custom
 	OverridesPath string // /persistent/unas-custom/smb-overrides.conf
 
+	ConfigPath    string // /persistent/unas-custom/config.yaml
+	ShareConfPath string // /etc/samba/share.conf
+
 	DropInDir  string // /etc/systemd/system/smbd.service.d
 	DropInPath string // /etc/systemd/system/smbd.service.d/unas-custom.conf
 
@@ -52,6 +56,9 @@ func NewInstaller() *Installer {
 		IncludeLine:   "include = /persistent/unas-custom/smb-overrides.conf",
 		ConfigDir:     "/persistent/unas-custom",
 		OverridesPath: "/persistent/unas-custom/smb-overrides.conf",
+
+		ConfigPath:    "/persistent/unas-custom/config.yaml",
+		ShareConfPath: "/etc/samba/share.conf",
 
 		DropInDir:  "/etc/systemd/system/smbd.service.d",
 		DropInPath: "/etc/systemd/system/smbd.service.d/unas-custom.conf",
@@ -99,13 +106,16 @@ func (i *Installer) Install(binaryPath string) error {
 		return fmt.Errorf("injecting smb include: %w", err)
 	}
 
-	// Write placeholder smb-overrides.conf if it doesn't already exist.
-	// The real content is populated by "smb apply"; this ensures Samba
-	// can load the include line without error immediately after install.
+	// Generate smb-overrides.conf from config if available, otherwise write placeholder.
+	// Skip if overrides file already exists (preserve user/previous content).
 	if _, err := os.Stat(i.OverridesPath); os.IsNotExist(err) {
-		placeholder, _ := smb.GenerateOverrides(nil)
-		if err := os.WriteFile(i.OverridesPath, []byte(placeholder), 0644); err != nil {
-			return fmt.Errorf("writing smb overrides placeholder: %w", err)
+		overridesContent, genErr := i.generateOverridesFromConfig()
+		if genErr != nil {
+			// Config load failed or no overrides; fall back to placeholder
+			overridesContent, _ = smb.GenerateOverrides(nil)
+		}
+		if err := os.WriteFile(i.OverridesPath, []byte(overridesContent), 0644); err != nil {
+			return fmt.Errorf("writing smb overrides: %w", err)
 		}
 	}
 
@@ -124,13 +134,57 @@ func (i *Installer) installWrapper(binaryPath, targetPath, origPath string) erro
 			return fmt.Errorf("backing up %s: %w", targetPath, err)
 		}
 	}
-	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("removing existing %s: %w", targetPath, err)
+	// Atomic symlink replacement: create temp symlink then rename over target.
+	// This ensures targetPath is never missing (no window where it's absent).
+	tmpLink := targetPath + ".tmp"
+	// Clean up any stale temp symlink
+	if err := os.Remove(tmpLink); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing stale temp symlink %s: %w", tmpLink, err)
 	}
-	if err := os.Symlink(binaryPath, targetPath); err != nil {
-		return fmt.Errorf("installing wrapper to %s: %w", targetPath, err)
+	if err := os.Symlink(binaryPath, tmpLink); err != nil {
+		return fmt.Errorf("creating temp symlink for %s: %w", targetPath, err)
+	}
+	if err := os.Rename(tmpLink, targetPath); err != nil {
+		// Clean up temp symlink on rename failure
+		os.Remove(tmpLink)
+		return fmt.Errorf("atomically replacing %s: %w", targetPath, err)
 	}
 	return nil
+}
+
+// generateOverridesFromConfig loads config.yaml and generates real overrides content.
+// Returns an error if config cannot be loaded or has no SMB overrides.
+func (i *Installer) generateOverridesFromConfig() (string, error) {
+	cfg, err := config.Load(i.ConfigPath)
+	if err != nil {
+		return "", fmt.Errorf("loading config: %w", err)
+	}
+	if len(cfg.SMB.Overrides) == 0 {
+		return "", fmt.Errorf("no SMB overrides in config")
+	}
+
+	overrides := cfg.SMB.Overrides
+
+	// If any override uses AppendValidUsers, merge with existing share.conf valid users
+	hasAppend := false
+	for _, o := range overrides {
+		if len(o.AppendValidUsers) > 0 {
+			hasAppend = true
+			break
+		}
+	}
+	if hasAppend {
+		shareData, err := os.ReadFile(i.ShareConfPath)
+		if err == nil {
+			existingVU, parseErr := smb.ParseShareValidUsers(shareData)
+			if parseErr == nil {
+				overrides = smb.MergeAppendValidUsers(overrides, existingVU)
+			}
+		}
+		// If share.conf read or parse fails, proceed without merging
+	}
+
+	return smb.GenerateOverrides(overrides)
 }
 
 func (i *Installer) Uninstall() error {
