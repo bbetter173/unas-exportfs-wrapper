@@ -152,6 +152,12 @@ func TestRunNfsWrapper_MissingOriginal(t *testing.T) {
 	if !strings.Contains(stderrOutput, "not found") {
 		t.Errorf("expected 'not found' error in stderr, got: %q", stderrOutput)
 	}
+	if !strings.Contains(stderrOutput, "path checked:") {
+		t.Errorf("expected 'path checked:' in stderr, got: %q", stderrOutput)
+	}
+	if !strings.Contains(stderrOutput, "unas-custom status") {
+		t.Errorf("expected 'unas-custom status' suggestion in stderr, got: %q", stderrOutput)
+	}
 }
 
 func TestRunNfsWrapper_NoMatchingRules(t *testing.T) {
@@ -262,6 +268,45 @@ func TestRunSmbcontrolWrapper_MissingOriginal(t *testing.T) {
 	}
 	if !strings.Contains(stderrOutput, "not found") {
 		t.Errorf("expected 'not found' error in stderr, got: %q", stderrOutput)
+	}
+	if !strings.Contains(stderrOutput, "path checked:") {
+		t.Errorf("expected 'path checked:' in stderr, got: %q", stderrOutput)
+	}
+	if !strings.Contains(stderrOutput, "unas-custom status") {
+		t.Errorf("expected 'unas-custom status' suggestion in stderr, got: %q", stderrOutput)
+	}
+}
+
+func TestRunOriginalCommand_MissingOriginal_DiagnosticOutput(t *testing.T) {
+	dir := t.TempDir()
+	missingPath := filepath.Join(dir, "nonexistent.orig")
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	oldStderr := os.Stderr
+	os.Stderr = w
+
+	exitCode := runOriginalCommand(missingPath, []string{"--test"})
+
+	w.Close()
+	os.Stderr = oldStderr
+	var stderrBuf bytes.Buffer
+	stderrBuf.ReadFrom(r)
+	stderrOutput := stderrBuf.String()
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+	if !strings.Contains(stderrOutput, missingPath) {
+		t.Errorf("expected stderr to contain the missing path %q, got: %q", missingPath, stderrOutput)
+	}
+	if !strings.Contains(stderrOutput, "path checked:") {
+		t.Errorf("expected 'path checked:' in stderr, got: %q", stderrOutput)
+	}
+	if !strings.Contains(stderrOutput, "unas-custom status") {
+		t.Errorf("expected 'unas-custom status' suggestion in stderr, got: %q", stderrOutput)
 	}
 }
 
