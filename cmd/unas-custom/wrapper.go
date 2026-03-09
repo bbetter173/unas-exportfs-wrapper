@@ -109,7 +109,19 @@ func rewriteExportsFiles(exportsDir string, cfg *config.Config) error {
 func runOriginalCommand(originalPath string, args []string) int {
 	if _, err := os.Stat(originalPath); err != nil {
 		if os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "unas-custom: %s not found — reinstall with unas-custom install\n", originalPath)
+			// Try to resolve what the wrapper binary points to for diagnostics
+			wrapperPath := originalPath // fallback
+			if exe, exeErr := os.Executable(); exeErr == nil {
+				if target, linkErr := os.Readlink(exe); linkErr == nil {
+					wrapperPath = target
+				} else {
+					wrapperPath = exe
+				}
+			}
+			fmt.Fprintf(os.Stderr, "unas-custom: original binary not found\n")
+			fmt.Fprintf(os.Stderr, "  path checked: %s\n", originalPath)
+			fmt.Fprintf(os.Stderr, "  wrapper binary: %s\n", wrapperPath)
+			fmt.Fprintf(os.Stderr, "  run 'unas-custom status' to diagnose installation state\n")
 			return 1
 		}
 		fmt.Fprintf(os.Stderr, "unas-custom: cannot access %s: %v\n", originalPath, err)
